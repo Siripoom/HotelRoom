@@ -1,6 +1,10 @@
-// src/pages/admin/Dashboard.jsx
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Card, Row, Col, Statistic, Table, Tag, Button, Typography } from 'antd';
+import { HomeOutlined, CalendarOutlined, DollarOutlined, BarChartOutlined } from '@ant-design/icons';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+
+const { Title } = Typography;
 
 function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -11,228 +15,282 @@ function AdminDashboard() {
     totalRevenue: 0
   });
 
+  const [recentBookings, setRecentBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    async function fetchStats() {
-      try {
-        // สมมติว่ามีข้อมูลในระบบแล้ว (ในโปรเจคจริงต้องดึงข้อมูลจาก Supabase)
-        setStats({
-          totalRooms: 50,
-          availableRooms: 35,
-          pendingBookings: 12,
-          pendingPayments: 8,
-          totalRevenue: 75000
-        });
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      // สมมติว่ามีข้อมูลในระบบแล้ว (ในโปรเจคจริงต้องดึงข้อมูลจาก Supabase)
+      setStats({
+        totalRooms: 50,
+        availableRooms: 35,
+        pendingBookings: 12,
+        pendingPayments: 8,
+        totalRevenue: 75000
+      });
+
+      // ข้อมูลการจองล่าสุด (mock data)
+      const mockRecentBookings = Array.from({ length: 5 }, (_, i) => ({
+        key: i + 1,
+        id: `BK-${2025000 + i + 1}`,
+        customer: `ลูกค้าตัวอย่าง ${i + 1}`,
+        room: `${100 + i + 1}`,
+        checkIn: '15/05/2025',
+        checkOut: '17/05/2025',
+        status: i % 3 === 0 ? 'pending' : i % 3 === 1 ? 'confirmed' : 'checked-in'
+      }));
+      
+      setRecentBookings(mockRecentBookings);
+
+      // ในกรณีมีข้อมูลจริง
+      /*
+      // ดึงจำนวนห้องทั้งหมด
+      const { data: roomsData, error: roomsError } = await supabase
+        .from('rooms')
+        .select('*', { count: 'exact' });
         
-        // ตัวอย่างการดึงข้อมูลจาก Supabase (uncomment เมื่อมีข้อมูลจริง)
-        /*
-        // ดึงจำนวนห้องทั้งหมด
-        const { data: roomsData, error: roomsError } = await supabase
-          .from('rooms')
-          .select('*', { count: 'exact' });
-          
-        if (roomsError) throw roomsError;
+      if (roomsError) throw roomsError;
+      
+      // ดึงจำนวนห้องว่าง
+      const { data: availableRoomsData, error: availableRoomsError } = await supabase
+        .from('rooms')
+        .select('*', { count: 'exact' })
+        .eq('status', 'available');
         
-        // ดึงจำนวนห้องว่าง
-        const { data: availableRoomsData, error: availableRoomsError } = await supabase
-          .from('rooms')
-          .select('*', { count: 'exact' })
-          .eq('status', 'available');
-          
-        if (availableRoomsError) throw availableRoomsError;
+      if (availableRoomsError) throw availableRoomsError;
+      
+      // ดึงจำนวนการจองที่รอดำเนินการ
+      const { data: pendingBookingsData, error: pendingBookingsError } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact' })
+        .eq('status', 'pending');
         
-        // ดึงจำนวนการจองที่รอดำเนินการ
-        const { data: pendingBookingsData, error: pendingBookingsError } = await supabase
-          .from('bookings')
-          .select('*', { count: 'exact' })
-          .eq('status', 'pending');
-          
-        if (pendingBookingsError) throw pendingBookingsError;
+      if (pendingBookingsError) throw pendingBookingsError;
+      
+      // ดึงจำนวนการชำระเงินที่รอยืนยัน
+      const { data: pendingPaymentsData, error: pendingPaymentsError } = await supabase
+        .from('payments')
+        .select('*', { count: 'exact' })
+        .eq('status', 'pending');
         
-        // ดึงจำนวนการชำระเงินที่รอยืนยัน
-        const { data: pendingPaymentsData, error: pendingPaymentsError } = await supabase
-          .from('payments')
-          .select('*', { count: 'exact' })
-          .eq('status', 'pending');
-          
-        if (pendingPaymentsError) throw pendingPaymentsError;
+      if (pendingPaymentsError) throw pendingPaymentsError;
+      
+      // ดึงรายได้ทั้งหมด (จากการชำระเงินที่ยืนยันแล้ว)
+      const { data: revenueData, error: revenueError } = await supabase
+        .from('payments')
+        .select('amount')
+        .eq('status', 'confirmed');
         
-        // ดึงรายได้ทั้งหมด (จากการชำระเงินที่ยืนยันแล้ว)
-        const { data: revenueData, error: revenueError } = await supabase
-          .from('payments')
-          .select('amount')
-          .eq('status', 'confirmed');
-          
-        if (revenueError) throw revenueError;
-        
-        const totalRevenue = revenueData.reduce((sum, payment) => sum + payment.amount, 0);
-        
-        setStats({
-          totalRooms: roomsData.length,
-          availableRooms: availableRoomsData.length,
-          pendingBookings: pendingBookingsData.length,
-          pendingPayments: pendingPaymentsData.length,
-          totalRevenue
-        });
-        */
-      } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
+      if (revenueError) throw revenueError;
+      
+      const totalRevenue = revenueData.reduce((sum, payment) => sum + payment.amount, 0);
+      
+      setStats({
+        totalRooms: roomsData.length,
+        availableRooms: availableRoomsData.length,
+        pendingBookings: pendingBookingsData.length,
+        pendingPayments: pendingPaymentsData.length,
+        totalRevenue
+      });
+
+      // ดึงการจองล่าสุด
+      const { data: recentBookingsData, error: recentBookingsError } = await supabase
+        .from('bookings')
+        .select(`
+          id,
+          booking_number,
+          customer:customer_id (first_name, last_name),
+          room:room_id (room_number),
+          check_in_date,
+          check_out_date,
+          status
+        `)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (recentBookingsError) throw recentBookingsError;
+
+      const formattedBookings = recentBookingsData.map((booking, index) => ({
+        key: index,
+        id: booking.booking_number,
+        customer: `${booking.customer.first_name} ${booking.customer.last_name}`,
+        room: booking.room.room_number,
+        checkIn: new Date(booking.check_in_date).toLocaleDateString('th-TH'),
+        checkOut: new Date(booking.check_out_date).toLocaleDateString('th-TH'),
+        status: booking.status
+      }));
+
+      setRecentBookings(formattedBookings);
+      */
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const columns = [
+    {
+      title: 'รหัสการจอง',
+      dataIndex: 'id',
+      key: 'id',
+    },
+    {
+      title: 'ลูกค้า',
+      dataIndex: 'customer',
+      key: 'customer',
+    },
+    {
+      title: 'ห้อง',
+      dataIndex: 'room',
+      key: 'room',
+    },
+    {
+      title: 'วันที่เช็คอิน',
+      dataIndex: 'checkIn',
+      key: 'checkIn',
+    },
+    {
+      title: 'วันที่เช็คเอาท์',
+      dataIndex: 'checkOut',
+      key: 'checkOut',
+    },
+    {
+      title: 'สถานะ',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => {
+        let color = 'default';
+        let text = '';
+
+        switch (status) {
+          case 'pending':
+            color = 'gold';
+            text = 'รอการชำระเงิน';
+            break;
+          case 'confirmed':
+            color = 'green';
+            text = 'ยืนยันแล้ว';
+            break;
+          case 'checked-in':
+            color = 'blue';
+            text = 'เช็คอินแล้ว';
+            break;
+          case 'completed':
+            color = 'cyan';
+            text = 'เสร็จสิ้น';
+            break;
+          case 'cancelled':
+            color = 'red';
+            text = 'ยกเลิก';
+            break;
+          default:
+            text = status;
+        }
+
+        return <Tag color={color}>{text}</Tag>;
       }
     }
-    
-    fetchStats();
-  }, []);
+  ];
 
   return (
     <div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">ห้องพักทั้งหมด</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.totalRooms}</p>
+      <Title level={4} style={{ marginBottom: 24 }}>ภาพรวมระบบ</Title>
+      
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="ห้องพักทั้งหมด"
+              value={stats.totalRooms}
+              prefix={<HomeOutlined />}
+              suffix={<span style={{ fontSize: '14px', marginLeft: '8px' }}>{`ว่าง: ${stats.availableRooms}`}</span>}
+            />
+            <div style={{ marginTop: 8 }}>
+              <div style={{ background: '#f0f0f0', height: 8, borderRadius: 4 }}>
+                <div 
+                  style={{ 
+                    background: '#1890ff', 
+                    height: 8, 
+                    borderRadius: 4, 
+                    width: `${(stats.availableRooms / stats.totalRooms) * 100}%` 
+                  }} 
+                />
+              </div>
             </div>
-            <div className="p-3 bg-blue-100 rounded-full">
-              <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-              </svg>
-            </div>
-          </div>
-          <div className="mt-4">
-            <p className="text-sm font-medium text-gray-500">ห้องว่าง: {stats.availableRooms}</p>
-            <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-              <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${(stats.availableRooms / stats.totalRooms) * 100}%` }}></div>
-            </div>
-          </div>
-        </div>
+          </Card>
+        </Col>
 
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">การจองที่รอดำเนินการ</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.pendingBookings}</p>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="การจองที่รอดำเนินการ"
+              value={stats.pendingBookings}
+              prefix={<CalendarOutlined />}
+              valueStyle={{ color: stats.pendingBookings > 0 ? '#faad14' : '' }}
+            />
+            <div style={{ marginTop: 8 }}>
+              <Link to="/admin/bookings">
+                <Button type="link" size="small" style={{ padding: 0 }}>
+                  ดูรายการที่รอดำเนินการ →
+                </Button>
+              </Link>
             </div>
-            <div className="p-3 bg-yellow-100 rounded-full">
-              <svg className="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-              </svg>
-            </div>
-          </div>
-          <div className="mt-4">
-            <button className="text-sm font-medium text-yellow-600 hover:text-yellow-700">
-              ดูรายการที่รอดำเนินการ →
-            </button>
-          </div>
-        </div>
+          </Card>
+        </Col>
 
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">การชำระเงินที่รอยืนยัน</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.pendingPayments}</p>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="การชำระเงินที่รอยืนยัน"
+              value={stats.pendingPayments}
+              prefix={<DollarOutlined />}
+              valueStyle={{ color: stats.pendingPayments > 0 ? '#52c41a' : '' }}
+            />
+            <div style={{ marginTop: 8 }}>
+              <Link to="/admin/payments">
+                <Button type="link" size="small" style={{ padding: 0 }}>
+                  ตรวจสอบการชำระเงิน →
+                </Button>
+              </Link>
             </div>
-            <div className="p-3 bg-green-100 rounded-full">
-              <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-            </div>
-          </div>
-          <div className="mt-4">
-            <button className="text-sm font-medium text-green-600 hover:text-green-700">
-              ตรวจสอบการชำระเงิน →
-            </button>
-          </div>
-        </div>
+          </Card>
+        </Col>
 
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">รายได้ทั้งหมด</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.totalRevenue.toLocaleString()} บาท</p>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="รายได้ทั้งหมด"
+              value={stats.totalRevenue}
+              prefix={<BarChartOutlined />}
+              suffix="บาท"
+              precision={2}
+            />
+            <div style={{ marginTop: 8 }}>
+              <Link to="/admin/reports">
+                <Button type="link" size="small" style={{ padding: 0 }}>
+                  ดูรายงานรายได้ →
+                </Button>
+              </Link>
             </div>
-            <div className="p-3 bg-indigo-100 rounded-full">
-              <svg className="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-              </svg>
-            </div>
-          </div>
-          <div className="mt-4">
-            <button className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
-              ดูรายงานรายได้ →
-            </button>
-          </div>
-        </div>
-      </div>
+          </Card>
+        </Col>
+      </Row>
 
-      <div className="bg-white shadow rounded-lg p-6 mb-8">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">การจองล่าสุด</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  รหัสการจอง
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ลูกค้า
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ห้อง
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  วันที่เช็คอิน
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  วันที่เช็คเอาท์
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  สถานะ
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {[1, 2, 3, 4, 5].map((booking) => (
-                <tr key={booking} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    BK-{2025000 + booking}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ลูกค้าตัวอย่าง {booking}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {100 + booking}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    15/05/2025
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    17/05/2025
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      booking % 3 === 0 
-                        ? 'bg-yellow-100 text-yellow-800' 
-                        : booking % 3 === 1 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {booking % 3 === 0 
-                        ? 'รอการชำระเงิน' 
-                        : booking % 3 === 1 
-                          ? 'ยืนยันแล้ว' 
-                          : 'เช็คอินแล้ว'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="mt-4 text-center">
-          <button className="text-sm font-medium text-blue-600 hover:text-blue-700">
-            ดูการจองทั้งหมด →
-          </button>
-        </div>
-      </div>
+      <Card title="การจองล่าสุด" style={{ marginTop: 24 }} extra={<Link to="/admin/bookings">ดูทั้งหมด</Link>}>
+        <Table
+          columns={columns}
+          dataSource={recentBookings}
+          loading={loading}
+          pagination={false}
+          size="middle"
+        />
+      </Card>
     </div>
   );
 }

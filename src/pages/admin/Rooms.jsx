@@ -1,33 +1,65 @@
-// src/pages/admin/Rooms.jsx
-import { useState, useEffect, useCallback } from "react";
-import { useDropzone } from "react-dropzone";
+import { useState, useEffect } from "react";
+import {
+  Card,
+  Table,
+  Button,
+  Space,
+  Modal,
+  Form,
+  Input,
+  Select,
+  Upload,
+  Image,
+  Typography,
+  Row,
+  Col,
+  Tag,
+  Popconfirm,
+  Empty,
+  Divider,
+  message,
+} from "antd";
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  UploadOutlined,
+  PictureOutlined,
+  QuestionCircleOutlined,
+  InboxOutlined,
+} from "@ant-design/icons";
 import { supabase } from "../../lib/supabase";
-import { uploadImage, deleteImage } from "../../utils/storageUtils";
+
+const { Title, Text } = Typography;
+const { TextArea } = Input;
+const { Option } = Select;
+const { Dragger } = Upload;
 
 function AdminRooms() {
   const [rooms, setRooms] = useState([]);
   const [roomTypes, setRoomTypes] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const [currentRoom, setCurrentRoom] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    room_number: "",
-    room_type_id: "",
-    description: "",
-    status: "available",
-    main_image: "",
-    images: [],
-  });
-  const [uploadedImages, setUploadedImages] = useState([]);
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(true);
+  const [confirmLoading, setConfirmLoading] = useState(false);
   const [mainImageFile, setMainImageFile] = useState(null);
+  const [mainImagePreview, setMainImagePreview] = useState(null);
   const [additionalImageFiles, setAdditionalImageFiles] = useState([]);
+  const [additionalImagePreviews, setAdditionalImagePreviews] = useState([]);
 
-  // โหลดข้อมูลห้องพักและประเภทห้อง
   useEffect(() => {
     fetchRoomTypes();
     fetchRooms();
   }, []);
-
+  const handleAfterClose = () => {
+    setCurrentRoom(null);
+    form.resetFields();
+    setMainImageFile(null);
+    setMainImagePreview(null);
+    setAdditionalImageFiles([]);
+    setAdditionalImagePreviews([]);
+  }; // src/pages/admin/Rooms.jsx
   const fetchRoomTypes = async () => {
     try {
       const { data, error } = await supabase
@@ -39,11 +71,12 @@ function AdminRooms() {
       setRoomTypes(data || []);
     } catch (error) {
       console.error("Error fetching room types:", error);
-      alert("ไม่สามารถโหลดข้อมูลประเภทห้องพักได้");
+      message.error("ไม่สามารถโหลดข้อมูลประเภทห้องพักได้");
     }
   };
 
   const fetchRooms = async () => {
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from("rooms")
@@ -60,141 +93,257 @@ function AdminRooms() {
         .order("room_number", { ascending: true });
 
       if (error) throw error;
-      setRooms(data || []);
+
+      // Add key property for Table component
+      const dataWithKeys =
+        data?.map((item) => ({
+          ...item,
+          key: item.id,
+        })) || [];
+
+      setRooms(dataWithKeys);
     } catch (error) {
       console.error("Error fetching rooms:", error);
-      alert("ไม่สามารถโหลดข้อมูลห้องพักได้");
+      message.error("ไม่สามารถโหลดข้อมูลห้องพักได้");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ฟังก์ชันเปิด/ปิด Modal
-  const openModal = (room = null) => {
+  const showModal = (room = null) => {
+    console.log("Opening modal with room:", room);
+    setCurrentRoom(room);
+
     if (room) {
-      setCurrentRoom(room);
-      setFormData({
+      form.setFieldsValue({
         room_number: room.room_number,
         room_type_id: room.room_type_id,
         description: room.description || "",
         status: room.status,
-        main_image: room.main_image || "",
-        images: room.images || [],
       });
-      setUploadedImages(room.images || []);
-    } else {
-      setCurrentRoom(null);
-      setFormData({
-        room_number: "",
-        room_type_id: "",
-        description: "",
-        status: "available",
-        main_image: "",
-        images: [],
-      });
-      setUploadedImages([]);
-      setMainImageFile(null);
-      setAdditionalImageFiles([]);
-    }
-    setIsModalOpen(true);
-  };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setCurrentRoom(null);
+      // ตั้งค่ารูปภาพที่มีอยู่แล้ว
+      setMainImagePreview(room.main_image || null);
+      setAdditionalImagePreviews(room.images || []);
+    } else {
+      form.resetFields();
+      form.setFieldsValue({ status: "available" });
+
+      // ล้างข้อมูลรูปภาพ
+      setMainImagePreview(null);
+      setAdditionalImagePreviews([]);
+    }
+
+    // รีเซ็ตไฟล์ที่อัปโหลด
     setMainImageFile(null);
     setAdditionalImageFiles([]);
+
+    setIsModalVisible(true);
   };
 
-  // จัดการการเปลี่ยนแปลงในฟอร์ม
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+  const handleCancel = () => {
+    // ปิด Modal โดยไม่แสดง confirm dialog
+    setIsModalVisible(false);
+    setCurrentRoom(null);
+    form.resetFields();
+
+    // ล้างข้อมูลรูปภาพ
+    setMainImageFile(null);
+    setMainImagePreview(null);
+    setAdditionalImageFiles([]);
+    setAdditionalImagePreviews([]);
   };
 
   // จัดการอัปโหลดรูปภาพหลัก
-  const onMainImageDrop = useCallback((acceptedFiles) => {
-    if (acceptedFiles.length > 0) {
-      const file = acceptedFiles[0];
+  const handleMainImageChange = (info) => {
+    console.log("Main image change event:", info);
+
+    // กรณีที่มีการอัปโหลดไฟล์
+    if (info.file && info.file.originFileObj) {
+      const file = info.file.originFileObj;
+      console.log("Main image selected:", file.name, file.type, file.size);
+
+      // ตรวจสอบขนาดและประเภทไฟล์
+      const isLt5M = file.size / 1024 / 1024 < 5;
+      const isImage = file.type.startsWith("image/");
+
+      if (!isImage) {
+        message.error("กรุณาอัปโหลดไฟล์รูปภาพเท่านั้น!");
+        return;
+      }
+
+      if (!isLt5M) {
+        message.error("รูปภาพต้องมีขนาดไม่เกิน 5MB!");
+        return;
+      }
+
+      // เก็บไฟล์ในสถานะและสร้าง preview
       setMainImageFile(file);
-      // แสดงภาพตัวอย่าง
       const previewUrl = URL.createObjectURL(file);
-      setFormData((prev) => ({ ...prev, main_image: previewUrl }));
+      setMainImagePreview(previewUrl);
+      console.log("Preview URL created:", previewUrl);
     }
-  }, []);
-
-  const {
-    getRootProps: getMainImageRootProps,
-    getInputProps: getMainImageInputProps,
-  } = useDropzone({
-    onDrop: onMainImageDrop,
-    accept: {
-      "image/*": [".jpeg", ".jpg", ".png", ".webp"],
-    },
-    maxFiles: 1,
-  });
-
-  // จัดการอัปโหลดรูปภาพเพิ่มเติม
-  const onAdditionalImagesDrop = useCallback((acceptedFiles) => {
-    setAdditionalImageFiles((prev) => [...prev, ...acceptedFiles]);
-
-    // สร้าง preview URLs สำหรับการแสดงผล
-    const newPreviewUrls = acceptedFiles.map((file) =>
-      URL.createObjectURL(file)
-    );
-    setUploadedImages((prev) => [...prev, ...newPreviewUrls]);
-  }, []);
-
-  const {
-    getRootProps: getAdditionalImagesRootProps,
-    getInputProps: getAdditionalImagesInputProps,
-  } = useDropzone({
-    onDrop: onAdditionalImagesDrop,
-    accept: {
-      "image/*": [".jpeg", ".jpg", ".png", ".webp"],
-    },
-  });
-
-  // ลบรูปภาพเพิ่มเติม
-  const removeImage = (index) => {
-    // ถ้าเป็นรูปภาพที่มีอยู่แล้ว จะต้องลบจาก array
-    // ถ้าเป็นรูปภาพที่เพิ่งอัปโหลด จะต้องลบจาก array ของไฟล์ด้วย
-    const isNewImage = index >= formData.images.length;
-
-    if (isNewImage) {
-      const newIndex = index - formData.images.length;
-      setAdditionalImageFiles((prev) => prev.filter((_, i) => i !== newIndex));
-    }
-
-    setUploadedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // บันทึกข้อมูลห้องพัก
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const handleAdditionalImagesUpload = (info) => {
+    const { fileList } = info;
 
+    // Filter file objects
+    const newFiles = fileList
+      .filter((file) => file.originFileObj)
+      .map((file) => file.originFileObj);
+
+    setAdditionalImageFiles(newFiles);
+
+    // Create preview URLs
+    const newPreviews = fileList
+      .filter((file) => file.originFileObj)
+      .map((file) => {
+        if (file.url) return file.url;
+        return URL.createObjectURL(file.originFileObj);
+      });
+
+    setAdditionalImagePreviews((prevPreviews) => {
+      // Combine existing image URLs from the database with new uploads
+      if (currentRoom && currentRoom.images) {
+        return [...currentRoom.images, ...newPreviews];
+      }
+      return newPreviews;
+    });
+  };
+
+  const removeAdditionalImage = (index) => {
+    // If removing an existing image from database
+    if (
+      currentRoom &&
+      currentRoom.images &&
+      index < currentRoom.images.length
+    ) {
+      const updatedImages = [...currentRoom.images];
+      updatedImages.splice(index, 1);
+      setAdditionalImagePreviews(updatedImages);
+    } else {
+      // If removing a newly uploaded image
+      const newIndex = index - (currentRoom?.images?.length || 0);
+      const updatedFiles = [...additionalImageFiles];
+      updatedFiles.splice(newIndex, 1);
+      setAdditionalImageFiles(updatedFiles);
+
+      const updatedPreviews = [...additionalImagePreviews];
+      updatedPreviews.splice(index, 1);
+      setAdditionalImagePreviews(updatedPreviews);
+    }
+  };
+
+  const uploadImage = async (file) => {
     try {
-      let mainImageUrl = formData.main_image;
-      let additionalImageUrls = [...formData.images];
+      if (!file) return null;
 
-      // อัปโหลดรูปภาพหลัก (ถ้ามี)
+      // เพิ่ม console.log เพื่อตรวจสอบข้อมูลไฟล์
+      console.log("Uploading file:", file.name, file.type, file.size);
+
+      // ตรวจสอบประเภทไฟล์
+      if (!file.type.startsWith("image/")) {
+        throw new Error("กรุณาอัปโหลดไฟล์รูปภาพเท่านั้น");
+      }
+
+      // สร้างชื่อไฟล์ที่ไม่ซ้ำกัน
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2, 15)}.${fileExt}`;
+
+      console.log("Generated filename:", fileName);
+
+      // อัปโหลดไฟล์ไปที่ Supabase Storage
+      const { data, error } = await supabase.storage
+        .from("rooms")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (error) {
+        console.error("Storage upload error:", error);
+        throw error;
+      }
+
+      console.log("Upload successful, data:", data);
+
+      // สร้าง URL สำหรับเข้าถึงรูปภาพ
+      const { data: urlData } = supabase.storage
+        .from("rooms")
+        .getPublicUrl(fileName);
+
+      console.log("Public URL:", urlData?.publicUrl);
+
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      message.error("ไม่สามารถอัปโหลดรูปภาพได้: " + error.message);
+      // ในกรณีที่มีข้อผิดพลาด ให้คืนค่า null แทนที่จะ throw error
+      // เพื่อให้โค้ดสามารถทำงานต่อไปได้
+      return null;
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      setConfirmLoading(true);
+
+      let mainImageUrl = currentRoom?.main_image || null;
+      let additionalImageUrls = [...(currentRoom?.images || [])];
+
+      // ถ้ามีการเปลี่ยนรูปภาพหลัก
       if (mainImageFile) {
+        // ลบรูปภาพเก่า (ถ้ามี)
+        if (currentRoom?.main_image) {
+          await deleteImage(currentRoom.main_image);
+        }
+        // อัปโหลดรูปภาพใหม่
         mainImageUrl = await uploadImage(mainImageFile);
       }
 
-      // อัปโหลดรูปภาพเพิ่มเติม (ถ้ามี)
+      // กรณีลบรูปภาพหลัก
+      if (!mainImagePreview && currentRoom?.main_image) {
+        await deleteImage(currentRoom.main_image);
+        mainImageUrl = null;
+      }
+
+      // จัดการรูปภาพเพิ่มเติม
+      // 1. ลบรูปภาพเก่าที่ไม่มีในรายการปัจจุบัน
+      if (currentRoom?.images) {
+        const currentImages = additionalImagePreviews.slice(
+          0,
+          currentRoom.images.length
+        );
+        const removedImages = currentRoom.images.filter(
+          (url) => !currentImages.includes(url)
+        );
+
+        for (const imgUrl of removedImages) {
+          await deleteImage(imgUrl);
+        }
+
+        // อัปเดตรายการรูปภาพที่เหลือ
+        additionalImageUrls = currentImages;
+      }
+
+      // 2. อัปโหลดรูปภาพใหม่ที่เพิ่มเข้ามา
       if (additionalImageFiles.length > 0) {
-        const newUrls = await Promise.all(
+        const newImageUrls = await Promise.all(
           additionalImageFiles.map((file) => uploadImage(file))
         );
-        additionalImageUrls = [...additionalImageUrls, ...newUrls];
+        additionalImageUrls = [...additionalImageUrls, ...newImageUrls];
       }
 
       // ข้อมูลที่จะบันทึกลงฐานข้อมูล
       const roomData = {
-        room_number: formData.room_number,
-        room_type_id: formData.room_type_id,
-        description: formData.description,
-        status: formData.status,
+        room_number: values.room_number,
+        room_type_id: values.room_type_id,
+        description: values.description,
+        status: values.status,
         main_image: mainImageUrl,
         images: additionalImageUrls,
       };
@@ -215,13 +364,16 @@ function AdminRooms() {
             room.id === currentRoom.id
               ? {
                   ...data[0],
+                  key: data[0].id,
                   room_type: roomTypes.find(
-                    (rt) => rt.id === roomData.room_type_id
+                    (rt) => rt.id === data[0].room_type_id
                   ),
                 }
               : room
           )
         );
+
+        message.success("อัปเดตข้อมูลห้องพักสำเร็จ");
       } else {
         // เพิ่มข้อมูลห้องพักใหม่
         const { data, error } = await supabase
@@ -236,28 +388,54 @@ function AdminRooms() {
           ...rooms,
           {
             ...data[0],
-            room_type: roomTypes.find((rt) => rt.id === roomData.room_type_id),
+            key: data[0].id,
+            room_type: roomTypes.find((rt) => rt.id === data[0].room_type_id),
           },
         ]);
+
+        message.success("เพิ่มห้องพักใหม่สำเร็จ");
       }
 
-      closeModal();
-      // เรียกดึงข้อมูลใหม่อีกครั้งเพื่อให้แน่ใจว่าข้อมูลเป็นปัจจุบัน
-      fetchRooms();
+      handleCancel();
     } catch (error) {
       console.error("Error saving room:", error);
-      alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล: " + error.message);
+      message.error(
+        "เกิดข้อผิดพลาดในการบันทึกข้อมูล: " +
+          (error.message || "โปรดลองอีกครั้ง")
+      );
     } finally {
-      setIsLoading(false);
+      setConfirmLoading(false);
     }
   };
 
-  // ลบห้องพัก
-  const handleDelete = async (roomId) => {
-    if (!confirm("คุณต้องการลบห้องพักนี้ใช่หรือไม่?")) return;
+  const deleteImage = async (url) => {
+    if (!url) return;
 
     try {
-      setIsLoading(true);
+      // แยกชื่อไฟล์จาก URL
+      const urlParts = url.split("/");
+      const fileName = urlParts[urlParts.length - 1];
+
+      if (!fileName) return;
+
+      // ลบไฟล์จาก Supabase Storage
+      const { error } = await supabase.storage.from("rooms").remove([fileName]);
+
+      if (error) {
+        console.error("Storage delete error:", error);
+        throw error;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      message.error("ไม่สามารถลบรูปภาพได้: " + error.message);
+    }
+  };
+
+  const handleDelete = async (roomId) => {
+    try {
+      setLoading(true);
 
       // ดึงข้อมูลห้องพักที่จะลบ
       const roomToDelete = rooms.find((room) => room.id === roomId);
@@ -268,7 +446,9 @@ function AdminRooms() {
       }
 
       if (roomToDelete.images && roomToDelete.images.length > 0) {
-        await Promise.all(roomToDelete.images.map((url) => deleteImage(url)));
+        for (const imgUrl of roomToDelete.images) {
+          await deleteImage(imgUrl);
+        }
       }
 
       // ลบข้อมูลจากฐานข้อมูล
@@ -278,519 +458,389 @@ function AdminRooms() {
 
       // ลบข้อมูลจากสถานะ
       setRooms(rooms.filter((room) => room.id !== roomId));
+
+      message.success("ลบห้องพักสำเร็จ");
     } catch (error) {
       console.error("Error deleting room:", error);
-      alert("เกิดข้อผิดพลาดในการลบข้อมูล: " + error.message);
+      message.error(
+        "เกิดข้อผิดพลาดในการลบข้อมูล: " + (error.message || "โปรดลองอีกครั้ง")
+      );
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  // ฟังก์ชันช่วยสำหรับแสดงสถานะห้องพัก
-  const getStatusBadgeClass = (status) => {
+  const getStatusTag = (status) => {
+    let color, text;
     switch (status) {
       case "available":
-        return "bg-green-100 text-green-800";
+        color = "success";
+        text = "ว่าง";
+        break;
       case "occupied":
-        return "bg-blue-100 text-blue-800";
+        color = "processing";
+        text = "ไม่ว่าง";
+        break;
       case "maintenance":
-        return "bg-yellow-100 text-yellow-800";
+        color = "warning";
+        text = "กำลังปรับปรุง";
+        break;
       default:
-        return "bg-gray-100 text-gray-800";
+        color = "default";
+        text = status;
     }
+    return <Tag color={color}>{text}</Tag>;
   };
 
-  const getStatusText = (status) => {
-    switch (status) {
-      case "available":
-        return "ว่าง";
-      case "occupied":
-        return "ไม่ว่าง";
-      case "maintenance":
-        return "กำลังปรับปรุง";
-      default:
-        return status;
-    }
+  const columns = [
+    {
+      title: "รูปภาพ",
+      dataIndex: "main_image",
+      key: "main_image",
+      width: 120,
+      render: (image) =>
+        image ? (
+          <Image
+            src={image}
+            alt="Room"
+            width={100}
+            height={70}
+            style={{ objectFit: "cover" }}
+          />
+        ) : (
+          <div
+            style={{
+              width: 100,
+              height: 70,
+              background: "#f5f5f5",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 4,
+            }}
+          >
+            <PictureOutlined style={{ fontSize: 24, color: "#d9d9d9" }} />
+          </div>
+        ),
+    },
+    {
+      title: "หมายเลขห้อง",
+      dataIndex: "room_number",
+      key: "room_number",
+      sorter: (a, b) => a.room_number.localeCompare(b.room_number),
+    },
+    {
+      title: "ประเภทห้อง",
+      key: "room_type",
+      render: (_, record) => record.room_type?.name || "-",
+      sorter: (a, b) =>
+        (a.room_type?.name || "").localeCompare(b.room_type?.name || ""),
+    },
+    {
+      title: "รายละเอียด",
+      dataIndex: "description",
+      key: "description",
+      ellipsis: true,
+      render: (text) => text || "-",
+    },
+    {
+      title: "สถานะ",
+      dataIndex: "status",
+      key: "status",
+      render: (status) => getStatusTag(status),
+      filters: [
+        { text: "ว่าง", value: "available" },
+        { text: "ไม่ว่าง", value: "occupied" },
+        { text: "กำลังปรับปรุง", value: "maintenance" },
+      ],
+      onFilter: (value, record) => record.status === value,
+    },
+    {
+      title: "จัดการ",
+      key: "action",
+      render: (_, record) => (
+        <Space size="middle">
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
+            onClick={() => showModal(record)}
+          >
+            แก้ไข
+          </Button>
+          <Popconfirm
+            title="คุณต้องการลบห้องพักนี้ใช่หรือไม่?"
+            description="การดำเนินการนี้ไม่สามารถเรียกคืนได้"
+            icon={<QuestionCircleOutlined style={{ color: "red" }} />}
+            onConfirm={() => handleDelete(record.id)}
+            okText="ใช่"
+            cancelText="ไม่"
+          >
+            <Button danger icon={<DeleteOutlined />}>
+              ลบ
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  const mainImageUploadProps = {
+    name: "main_image",
+    multiple: false,
+    maxCount: 1,
+    showUploadList: false,
+    onChange: handleMainImageChange,
+    // ป้องกันการอัปโหลดอัตโนมัติ
+    customRequest: ({ file, onSuccess }) => {
+      setTimeout(() => {
+        onSuccess("ok");
+      }, 0);
+    },
+  };
+
+  const additionalImagesUploadProps = {
+    name: "images",
+    multiple: true,
+    maxCount: 10,
+    beforeUpload: (file) => {
+      // ตรวจสอบว่าเป็นไฟล์รูปภาพหรือไม่
+      const isImage = file.type.startsWith("image/");
+      if (!isImage) {
+        message.error("กรุณาอัปโหลดไฟล์รูปภาพเท่านั้น!");
+        return Upload.LIST_IGNORE;
+      }
+
+      // ตรวจสอบขนาดไฟล์ (ไม่เกิน 5MB)
+      const isLt5M = file.size / 1024 / 1024 < 5;
+      if (!isLt5M) {
+        message.error("รูปภาพต้องมีขนาดไม่เกิน 5MB!");
+        return Upload.LIST_IGNORE;
+      }
+
+      // เพิ่มไฟล์ไปยังรายการ
+      setAdditionalImageFiles((prev) => [...prev, file]);
+
+      // สร้าง preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setAdditionalImagePreviews((prev) => [...prev, previewUrl]);
+
+      // ป้องกันไม่ให้ Upload component ส่งไฟล์ไปยัง server โดยอัตโนมัติ
+      return false;
+    },
   };
 
   return (
     <div>
-      <div className="mb-6 flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-gray-800">จัดการห้องพัก</h2>
-        {/* ปรับปุ่มให้เด่นชัดขึ้นและใหญ่ขึ้น */}
-        <button
-          className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center text-lg shadow-md"
-          onClick={() => openModal()}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6 mr-2"
-            viewBox="0 0 20 20"
-            fill="currentColor"
+      <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
+        <Col>
+          <Title level={4} style={{ margin: 0 }}>
+            จัดการห้องพัก
+          </Title>
+        </Col>
+        <Col>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => showModal()}
+            size="large"
           >
-            <path
-              fillRule="evenodd"
-              d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-              clipRule="evenodd"
-            />
-          </svg>
-          เพิ่มห้องพัก
-        </button>
-      </div>
+            เพิ่มห้องพัก
+          </Button>
+        </Col>
+      </Row>
 
-      {/* เพิ่มส่วนนี้เพื่อแสดงข้อความเมื่อไม่มีข้อมูล */}
-      {rooms.length === 0 ? (
-        <div className="bg-white shadow rounded-lg p-8 text-center">
-          <p className="text-gray-500 mb-6 text-lg">ยังไม่มีข้อมูลห้องพัก</p>
-          <button
-            className="px-8 py-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center text-lg shadow-md"
-            onClick={() => openModal()}
+      {rooms.length === 0 && !loading ? (
+        <Card>
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="ยังไม่มีข้อมูลห้องพัก"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6 mr-2"
-              viewBox="0 0 20 20"
-              fill="currentColor"
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => showModal()}
             >
-              <path
-                fillRule="evenodd"
-                d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                clipRule="evenodd"
-              />
-            </svg>
-            เพิ่มห้องพักใหม่
-          </button>
-        </div>
-      ) : (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          {/* เพิ่มปุ่มในส่วนหัวของตาราง */}
-          <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-            <h3 className="text-lg font-medium text-gray-700">
-              รายการห้องพักทั้งหมด ({rooms.length})
-            </h3>
-            <button
-              className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 inline-flex items-center shadow-sm"
-              onClick={() => openModal()}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 mr-2"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                  clipRule="evenodd"
-                />
-              </svg>
               เพิ่มห้องพักใหม่
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    รูปภาพ
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    หมายเลขห้อง
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    ประเภทห้อง
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    รายละเอียด
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    สถานะ
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    จัดการ
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {rooms.map((room) => (
-                  <tr key={room.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {room.main_image ? (
-                        <img
-                          src={room.main_image}
-                          alt={`ห้อง ${room.room_number}`}
-                          className="h-16 w-24 object-cover rounded"
-                        />
-                      ) : (
-                        <div className="h-16 w-24 bg-gray-200 rounded flex items-center justify-center text-gray-500 text-xs">
-                          ไม่มีรูปภาพ
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {room.room_number}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {room.room_type?.name || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                      {room.description || "-"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(
-                          room.status
-                        )}`}
-                      >
-                        {getStatusText(room.status)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => openModal(room)}
-                        className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-1 rounded-md mr-2"
-                        disabled={isLoading}
-                      >
-                        แก้ไข
-                      </button>
-                      <button
-                        onClick={() => handleDelete(room.id)}
-                        className="bg-red-100 text-red-700 hover:bg-red-200 px-3 py-1 rounded-md"
-                        disabled={isLoading}
-                      >
-                        ลบ
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+            </Button>
+          </Empty>
+        </Card>
+      ) : (
+        <Card>
+          <Table
+            columns={columns}
+            dataSource={rooms}
+            rowKey="id"
+            loading={loading}
+            pagination={{ pageSize: 10 }}
+          />
+        </Card>
       )}
 
       {/* Modal for adding/editing rooms */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            {/* พื้นหลังทึบ - ลบ onClick={closeModal} ออก */}
-            <div
-              className="fixed inset-0 transition-opacity"
-              aria-hidden="true"
-            >
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+      <Modal
+        title={currentRoom ? "แก้ไขข้อมูลห้องพัก" : "เพิ่มห้องพักใหม่"}
+        open={isModalVisible}
+        onCancel={handleCancel}
+        afterClose={handleAfterClose}
+        footer={[
+          <Button key="back" onClick={handleCancel}>
+            ยกเลิก
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            loading={confirmLoading}
+            onClick={handleSubmit}
+            disabled={confirmLoading}
+          >
+            {currentRoom ? "บันทึกการแก้ไข" : "เพิ่มห้องพัก"}
+          </Button>,
+        ]}
+        maskClosable={false}
+        destroyOnClose={true}
+        width={800}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{
+            status: "available",
+          }}
+        >
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="room_number"
+                label="หมายเลขห้อง"
+                rules={[{ required: true, message: "กรุณาระบุหมายเลขห้อง" }]}
+              >
+                <Input placeholder="ระบุหมายเลขห้อง" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="room_type_id"
+                label="ประเภทห้อง"
+                rules={[{ required: true, message: "กรุณาเลือกประเภทห้อง" }]}
+              >
+                <Select placeholder="เลือกประเภทห้อง">
+                  {roomTypes.map((type) => (
+                    <Option key={type.id} value={type.id}>
+                      {type.name} - {type.base_price?.toLocaleString()} บาท/คืน
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item name="description" label="รายละเอียด">
+            <TextArea rows={3} placeholder="ระบุรายละเอียดของห้องพัก" />
+          </Form.Item>
+
+          <Form.Item
+            name="status"
+            label="สถานะ"
+            rules={[{ required: true, message: "กรุณาเลือกสถานะห้องพัก" }]}
+          >
+            <Select placeholder="เลือกสถานะห้องพัก">
+              <Option value="available">ว่าง</Option>
+              <Option value="occupied">ไม่ว่าง</Option>
+              <Option value="maintenance">กำลังปรับปรุง</Option>
+            </Select>
+          </Form.Item>
+
+          <Divider orientation="left">รูปภาพ</Divider>
+
+          <Form.Item label="รูปภาพหลัก">
+            <div style={{ marginBottom: 16 }}>
+              {mainImagePreview ? (
+                <div
+                  style={{
+                    position: "relative",
+                    marginBottom: 16,
+                    width: "fit-content",
+                  }}
+                >
+                  <Image
+                    src={mainImagePreview}
+                    alt="Main Room Image"
+                    width={200}
+                    height={150}
+                    style={{ objectFit: "cover" }}
+                  />
+                  <Button
+                    type="primary"
+                    danger
+                    size="small"
+                    icon={<DeleteOutlined />}
+                    style={{ position: "absolute", top: 5, right: 5 }}
+                    onClick={() => {
+                      setMainImagePreview(null);
+                      setMainImageFile(null);
+                    }}
+                  />
+                </div>
+              ) : (
+                <Upload {...mainImageUploadProps}>
+                  <Button icon={<UploadOutlined />}>อัปโหลดรูปภาพหลัก</Button>
+                  <div style={{ marginTop: 8, color: "#888" }}>
+                    รองรับไฟล์ภาพประเภท .jpg, .jpeg, .png, .webp (ขนาดไม่เกิน
+                    5MB)
+                  </div>
+                </Upload>
+              )}
+            </div>
+          </Form.Item>
+
+          <Form.Item label="รูปภาพเพิ่มเติม">
+            <div style={{ marginBottom: 16 }}>
+              <Dragger {...additionalImagesUploadProps}>
+                <p className="ant-upload-drag-icon">
+                  <InboxOutlined />
+                </p>
+                <p className="ant-upload-text">
+                  คลิกหรือลากไฟล์มาที่นี่เพื่ออัปโหลดรูปภาพเพิ่มเติม
+                </p>
+                <p className="ant-upload-hint">
+                  รองรับไฟล์ภาพประเภท .jpg, .jpeg, .png, .webp
+                </p>
+              </Dragger>
             </div>
 
-            <span
-              className="hidden sm:inline-block sm:align-middle sm:h-screen"
-              aria-hidden="true"
-            >
-              &#8203;
-            </span>
-
-            {/* ส่วนเนื้อหา Modal - ลบ onClick={(e) => e.stopPropagation()} ออก */}
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              {/* เพิ่มปุ่มปิด X ที่มุมบนขวา */}
-              <button
-                type="button"
-                className="absolute top-3 right-3 text-gray-400 hover:text-gray-500 focus:outline-none"
-                onClick={closeModal}
+            {additionalImagePreviews.length > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
+                  marginTop: 16,
+                }}
               >
-                <span className="sr-only">ปิด</span>
-                <svg
-                  className="h-6 w-6"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-
-              <form onSubmit={handleSubmit}>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <h3 className="text-xl font-medium text-gray-900 mb-4 pb-2 border-b">
-                    {currentRoom ? "แก้ไขข้อมูลห้องพัก" : "เพิ่มห้องพักใหม่"}
-                  </h3>
-
-                  <div className="mb-4">
-                    <label
-                      htmlFor="room_number"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      หมายเลขห้อง
-                    </label>
-                    <input
-                      type="text"
-                      id="room_number"
-                      name="room_number"
-                      value={formData.room_number}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      required
+                {additionalImagePreviews.map((url, index) => (
+                  <div key={index} style={{ position: "relative" }}>
+                    <Image
+                      src={url}
+                      alt={`Room Image ${index + 1}`}
+                      width={100}
+                      height={75}
+                      style={{ objectFit: "cover" }}
+                    />
+                    <Button
+                      type="primary"
+                      danger
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      style={{ position: "absolute", top: 0, right: 0 }}
+                      onClick={() => removeAdditionalImage(index)}
                     />
                   </div>
-
-                  <div className="mb-4">
-                    <label
-                      htmlFor="room_type_id"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      ประเภทห้อง
-                    </label>
-                    <select
-                      id="room_type_id"
-                      name="room_type_id"
-                      value={formData.room_type_id || ""}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    >
-                      <option value="">-- เลือกประเภทห้อง --</option>
-                      {roomTypes.map((type) => (
-                        <option key={type.id} value={type.id}>
-                          {type.name} - {type.base_price} บาท/คืน
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="mb-4">
-                    <label
-                      htmlFor="description"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      รายละเอียด
-                    </label>
-                    <textarea
-                      id="description"
-                      name="description"
-                      value={formData.description}
-                      onChange={handleChange}
-                      rows="3"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    ></textarea>
-                  </div>
-
-                  <div className="mb-4">
-                    <label
-                      htmlFor="status"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      สถานะ
-                    </label>
-                    <select
-                      id="status"
-                      name="status"
-                      value={formData.status}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="available">ว่าง</option>
-                      <option value="occupied">ไม่ว่าง</option>
-                      <option value="maintenance">กำลังปรับปรุง</option>
-                    </select>
-                  </div>
-
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      รูปภาพหลัก
-                    </label>
-                    <div
-                      {...getMainImageRootProps()}
-                      className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer hover:bg-gray-50"
-                    >
-                      <input {...getMainImageInputProps()} />
-                      {formData.main_image ? (
-                        <div className="flex flex-col items-center">
-                          <img
-                            src={formData.main_image}
-                            alt="รูปภาพหลัก"
-                            className="w-full max-h-48 object-contain mb-2"
-                          />
-                          <p className="text-sm text-gray-500">
-                            คลิกเพื่อเปลี่ยนรูปภาพ
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="py-4">
-                          <p className="text-sm text-gray-500">
-                            คลิกเพื่ออัปโหลดรูปภาพหลัก
-                          </p>
-                          <p className="text-xs text-gray-400 mt-1">
-                            ลากและวางไฟล์ หรือคลิกเพื่อเลือกไฟล์
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      รูปภาพเพิ่มเติม
-                    </label>
-                    <div
-                      {...getAdditionalImagesRootProps()}
-                      className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer hover:bg-gray-50 mb-2"
-                    >
-                      <input {...getAdditionalImagesInputProps()} />
-                      <p className="text-sm text-gray-500">
-                        คลิกเพื่ออัปโหลดรูปภาพเพิ่มเติม
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        ลากและวางไฟล์ หรือคลิกเพื่อเลือกไฟล์
-                      </p>
-                    </div>
-
-                    {uploadedImages.length > 0 && (
-                      <div className="grid grid-cols-3 gap-2 mt-2">
-                        {uploadedImages.map((imageUrl, index) => (
-                          <div key={index} className="relative">
-                            <img
-                              src={imageUrl}
-                              alt={`รูปภาพ ${index + 1}`}
-                              className="w-full h-24 object-cover rounded"
-                            />
-                            <button
-                              type="button"
-                              className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
-                              onClick={() => removeImage(index)}
-                            >
-                              &times;
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                  <button
-                    type="submit"
-                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <svg
-                          className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        กำลังบันทึก...
-                      </>
-                    ) : currentRoom ? (
-                      "บันทึกการแก้ไข"
-                    ) : (
-                      "เพิ่มห้องพัก"
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                    onClick={closeModal}
-                    disabled={isLoading}
-                  >
-                    ยกเลิก
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* แสดง Loading Overlay เมื่อกำลังโหลดข้อมูล */}
-      {isLoading && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-          <div className="bg-white p-4 rounded-lg shadow-lg flex items-center">
-            <svg
-              className="animate-spin h-6 w-6 text-blue-600 mr-3"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            <span className="text-gray-800">กำลังโหลดข้อมูล...</span>
-          </div>
-        </div>
-      )}
-
-      {/* แสดงปุ่ม Floating เพิ่มห้องพัก */}
-      <div className="fixed bottom-8 right-8 z-10">
-        <button
-          onClick={() => openModal()}
-          className="w-16 h-16 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 focus:outline-none flex items-center justify-center"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-8 w-8"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-            />
-          </svg>
-        </button>
-      </div>
+                ))}
+              </div>
+            )}
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }

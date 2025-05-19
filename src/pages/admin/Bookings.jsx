@@ -1,151 +1,179 @@
-// src/pages/admin/Bookings.jsx
 import { useState, useEffect } from 'react';
+import { 
+  Card, 
+  Table, 
+  Tag, 
+  Button, 
+  Space, 
+  Modal, 
+  Tabs, 
+  Typography, 
+  Descriptions, 
+  Row, 
+  Col, 
+  message 
+} from 'antd';
 import { supabase } from '../../lib/supabase';
+
+const { Title, Text } = Typography;
 
 function AdminBookings() {
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const [currentBooking, setCurrentBooking] = useState(null);
-  const [filter, setFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('all');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // ในตอนนี้ใช้ข้อมูลตัวอย่าง (mock data)
-    // ในโปรเจคจริงควรดึงข้อมูลจาก Supabase
-    const mockBookings = [
-      {
-        id: '1',
-        booking_number: 'B-2025001',
-        customer: { first_name: 'สมชาย', last_name: 'ใจดี', email: 'somchai@example.com', phone: '081-234-5678' },
-        room: { room_number: '101', room_type: { name: 'ห้องเตียงเดี่ยว' } },
-        check_in_date: '2025-05-15',
-        check_out_date: '2025-05-17',
-        total_price: 2000,
-        status: 'pending',
-        created_at: '2025-05-10T10:30:00Z',
-        payment_status: 'pending'
-      },
-      {
-        id: '2',
-        booking_number: 'B-2025002',
-        customer: { first_name: 'วิชัย', last_name: 'รักสงบ', email: 'wichai@example.com', phone: '081-876-5432' },
-        room: { room_number: '102', room_type: { name: 'ห้องเตียงเดี่ยว' } },
-        check_in_date: '2025-05-20',
-        check_out_date: '2025-05-25',
-        total_price: 5000,
-        status: 'confirmed',
-        created_at: '2025-05-11T14:20:00Z',
-        payment_status: 'confirmed'
-      },
-      {
-        id: '3',
-        booking_number: 'B-2025003',
-        customer: { first_name: 'สุดา', last_name: 'แสนดี', email: 'suda@example.com', phone: '081-111-2222' },
-        room: { room_number: '201', room_type: { name: 'ห้องเตียงคู่' } },
-        check_in_date: '2025-05-14',
-        check_out_date: '2025-05-16',
-        total_price: 3000,
-        status: 'completed',
-        created_at: '2025-05-05T09:15:00Z',
-        payment_status: 'confirmed'
-      },
-      {
-        id: '4',
-        booking_number: 'B-2025004',
-        customer: { first_name: 'มานะ', last_name: 'ตั้งใจ', email: 'mana@example.com', phone: '081-333-4444' },
-        room: { room_number: '301', room_type: { name: 'ห้องสวีท' } },
-        check_in_date: '2025-05-18',
-        check_out_date: '2025-05-20',
-        total_price: 5000,
-        status: 'cancelled',
-        created_at: '2025-05-08T16:40:00Z',
-        payment_status: 'refunded'
-      },
-      {
-        id: '5',
-        booking_number: 'B-2025005',
-        customer: { first_name: 'พรรณี', last_name: 'สวยงาม', email: 'pannee@example.com', phone: '081-555-6666' },
-        room: { room_number: '202', room_type: { name: 'ห้องเตียงคู่' } },
-        check_in_date: '2025-05-22',
-        check_out_date: '2025-05-24',
-        total_price: 3000,
-        status: 'pending',
-        created_at: '2025-05-12T11:10:00Z',
-        payment_status: 'pending'
-      },
-    ];
-    
-    setBookings(mockBookings);
-    setFilteredBookings(mockBookings);
-    
-    // ตัวอย่างการดึงข้อมูลจาก Supabase (uncomment เมื่อมีข้อมูลจริง)
-    /*
-    async function fetchBookings() {
-      try {
-        const { data, error } = await supabase
-          .from('bookings')
-          .select(`
-            *,
-            customer:customer_id (*),
-            room:room_id (
-              room_number,
-              room_type:room_type_id (name)
-            ),
-            payments (*)
-          `)
-          .order('created_at', { ascending: false });
-          
-        if (error) throw error;
-        
-        // เพิ่มสถานะการชำระเงิน
-        const bookingsWithPaymentStatus = data.map(booking => {
-          const payment = booking.payments && booking.payments.length > 0 
-            ? booking.payments[0] 
-            : null;
-            
-          return {
-            ...booking,
-            payment_status: payment ? payment.status : 'pending'
-          };
-        });
-        
-        setBookings(bookingsWithPaymentStatus);
-        setFilteredBookings(bookingsWithPaymentStatus);
-      } catch (error) {
-        console.error('Error fetching bookings:', error);
-      }
-    }
-    
     fetchBookings();
-    */
   }, []);
 
   useEffect(() => {
-    if (filter === 'all') {
+    if (activeTab === 'all') {
       setFilteredBookings(bookings);
     } else {
-      setFilteredBookings(bookings.filter(booking => booking.status === filter));
+      setFilteredBookings(bookings.filter(booking => booking.status === activeTab));
     }
-  }, [filter, bookings]);
+  }, [activeTab, bookings]);
 
-  const openModal = (booking) => {
-    setCurrentBooking(booking);
-    setIsModalOpen(true);
+  const fetchBookings = async () => {
+    setLoading(true);
+    try {
+      // ในตอนนี้ใช้ข้อมูลตัวอย่าง (mock data)
+      // ในโปรเจคจริงควรดึงข้อมูลจาก Supabase
+      const mockBookings = [
+        {
+          key: '1',
+          id: '1',
+          booking_number: 'B-2025001',
+          customer: { first_name: 'สมชาย', last_name: 'ใจดี', email: 'somchai@example.com', phone: '081-234-5678' },
+          room: { room_number: '101', room_type: { name: 'ห้องเตียงเดี่ยว' } },
+          check_in_date: '2025-05-15',
+          check_out_date: '2025-05-17',
+          total_price: 2000,
+          status: 'pending',
+          created_at: '2025-05-10T10:30:00Z',
+          payment_status: 'pending'
+        },
+        {
+          key: '2',
+          id: '2',
+          booking_number: 'B-2025002',
+          customer: { first_name: 'วิชัย', last_name: 'รักสงบ', email: 'wichai@example.com', phone: '081-876-5432' },
+          room: { room_number: '102', room_type: { name: 'ห้องเตียงเดี่ยว' } },
+          check_in_date: '2025-05-20',
+          check_out_date: '2025-05-25',
+          total_price: 5000,
+          status: 'confirmed',
+          created_at: '2025-05-11T14:20:00Z',
+          payment_status: 'confirmed'
+        },
+        {
+          key: '3',
+          id: '3',
+          booking_number: 'B-2025003',
+          customer: { first_name: 'สุดา', last_name: 'แสนดี', email: 'suda@example.com', phone: '081-111-2222' },
+          room: { room_number: '201', room_type: { name: 'ห้องเตียงคู่' } },
+          check_in_date: '2025-05-14',
+          check_out_date: '2025-05-16',
+          total_price: 3000,
+          status: 'completed',
+          created_at: '2025-05-05T09:15:00Z',
+          payment_status: 'confirmed'
+        },
+        {
+          key: '4',
+          id: '4',
+          booking_number: 'B-2025004',
+          customer: { first_name: 'มานะ', last_name: 'ตั้งใจ', email: 'mana@example.com', phone: '081-333-4444' },
+          room: { room_number: '301', room_type: { name: 'ห้องสวีท' } },
+          check_in_date: '2025-05-18',
+          check_out_date: '2025-05-20',
+          total_price: 5000,
+          status: 'cancelled',
+          created_at: '2025-05-08T16:40:00Z',
+          payment_status: 'refunded'
+        },
+        {
+          key: '5',
+          id: '5',
+          booking_number: 'B-2025005',
+          customer: { first_name: 'พรรณี', last_name: 'สวยงาม', email: 'pannee@example.com', phone: '081-555-6666' },
+          room: { room_number: '202', room_type: { name: 'ห้องเตียงคู่' } },
+          check_in_date: '2025-05-22',
+          check_out_date: '2025-05-24',
+          total_price: 3000,
+          status: 'pending',
+          created_at: '2025-05-12T11:10:00Z',
+          payment_status: 'pending'
+        },
+      ];
+      
+      setBookings(mockBookings);
+      setFilteredBookings(mockBookings);
+      
+      // ตัวอย่างการดึงข้อมูลจาก Supabase (uncomment เมื่อมีข้อมูลจริง)
+      /*
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          customer:customer_id (*),
+          room:room_id (
+            room_number,
+            room_type:room_type_id (name)
+          ),
+          payments (*)
+        `)
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      
+      // เพิ่มสถานะการชำระเงิน
+      const bookingsWithPaymentStatus = data.map((booking, index) => {
+        const payment = booking.payments && booking.payments.length > 0 
+          ? booking.payments[0] 
+          : null;
+          
+        return {
+          key: index.toString(),
+          ...booking,
+          payment_status: payment ? payment.status : 'pending'
+        };
+      });
+      
+      setBookings(bookingsWithPaymentStatus);
+      setFilteredBookings(bookingsWithPaymentStatus);
+      */
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      message.error('ไม่สามารถโหลดข้อมูลการจองได้');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
+  const showModal = (booking) => {
+    setCurrentBooking(booking);
+    setIsModalVisible(true);
+  };
+
+  const handleCancel = () => {
+    setIsModalVisible(false);
     setCurrentBooking(null);
   };
 
   const handleStatusChange = async (bookingId, newStatus) => {
     try {
+      setLoading(true);
       // ในโครงการจริง: อัปเดตข้อมูลใน Supabase
       /*
       const { data, error } = await supabase
         .from('bookings')
         .update({ status: newStatus })
-        .eq('id', bookingId);
+        .eq('id', bookingId)
+        .select();
         
       if (error) throw error;
       */
@@ -156,70 +184,33 @@ function AdminBookings() {
       );
       setBookings(updatedBookings);
       
-      closeModal();
+      message.success(`อัปเดตสถานะการจองเป็น "${getStatusText(newStatus)}" สำเร็จ`);
+      handleCancel();
     } catch (error) {
       console.error('Error updating booking status:', error);
-      alert('เกิดข้อผิดพลาดในการอัปเดตสถานะการจอง');
-    }
-  };
-
-  const getStatusBadgeClass = (status) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed':
-        return 'bg-green-100 text-green-800';
-      case 'completed':
-        return 'bg-blue-100 text-blue-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      message.error('เกิดข้อผิดพลาดในการอัปเดตสถานะการจอง');
+    } finally {
+      setLoading(false);
     }
   };
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'pending':
-        return 'รอการยืนยัน';
-      case 'confirmed':
-        return 'ยืนยันแล้ว';
-      case 'completed':
-        return 'เสร็จสิ้น';
-      case 'cancelled':
-        return 'ยกเลิก';
-      default:
-        return status;
-    }
-  };
-
-  const getPaymentStatusBadgeClass = (status) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      case 'refunded':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'pending': return 'รอการยืนยัน';
+      case 'confirmed': return 'ยืนยันแล้ว';
+      case 'completed': return 'เสร็จสิ้น';
+      case 'cancelled': return 'ยกเลิก';
+      default: return status;
     }
   };
 
   const getPaymentStatusText = (status) => {
     switch (status) {
-      case 'pending':
-        return 'รอการยืนยัน';
-      case 'confirmed':
-        return 'ชำระแล้ว';
-      case 'rejected':
-        return 'ปฏิเสธ';
-      case 'refunded':
-        return 'คืนเงินแล้ว';
-      default:
-        return status;
+      case 'pending': return 'รอการยืนยัน';
+      case 'confirmed': return 'ชำระแล้ว';
+      case 'rejected': return 'ปฏิเสธ';
+      case 'refunded': return 'คืนเงินแล้ว';
+      default: return status;
     }
   };
 
@@ -228,231 +219,222 @@ function AdminBookings() {
     return date.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
+  const columns = [
+    {
+      title: 'เลขที่การจอง',
+      dataIndex: 'booking_number',
+      key: 'booking_number',
+    },
+    {
+      title: 'ลูกค้า',
+      key: 'customer',
+      render: (_, record) => `${record.customer.first_name} ${record.customer.last_name}`
+    },
+    {
+      title: 'ห้อง',
+      key: 'room',
+      render: (_, record) => `${record.room.room_number} (${record.room.room_type.name})`
+    },
+    {
+      title: 'วันที่เข้าพัก',
+      key: 'dates',
+      render: (_, record) => `${formatDate(record.check_in_date)} - ${formatDate(record.check_out_date)}`
+    },
+    {
+      title: 'สถานะ',
+      key: 'status',
+      render: (_, record) => {
+        const statusColors = {
+          pending: 'gold',
+          confirmed: 'green',
+          completed: 'blue',
+          cancelled: 'red'
+        };
+        
+        return <Tag color={statusColors[record.status] || 'default'}>{getStatusText(record.status)}</Tag>;
+      },
+      filters: [
+        { text: 'รอการยืนยัน', value: 'pending' },
+        { text: 'ยืนยันแล้ว', value: 'confirmed' },
+        { text: 'เสร็จสิ้น', value: 'completed' },
+        { text: 'ยกเลิก', value: 'cancelled' }
+      ],
+      onFilter: (value, record) => record.status === value,
+    },
+    {
+      title: 'การชำระเงิน',
+      key: 'payment_status',
+      render: (_, record) => {
+        const paymentStatusColors = {
+          pending: 'gold',
+          confirmed: 'green',
+          rejected: 'red',
+          refunded: 'blue'
+        };
+        
+        return <Tag color={paymentStatusColors[record.payment_status] || 'default'}>{getPaymentStatusText(record.payment_status)}</Tag>;
+      }
+    },
+    {
+      title: 'จัดการ',
+      key: 'action',
+      render: (_, record) => (
+        <Button type="primary" onClick={() => showModal(record)}>
+          รายละเอียด
+        </Button>
+      ),
+    },
+  ];
+
+  const tabItems = [
+    { key: 'all', label: 'ทั้งหมด' },
+    { key: 'pending', label: 'รอการยืนยัน' },
+    { key: 'confirmed', label: 'ยืนยันแล้ว' },
+    { key: 'completed', label: 'เสร็จสิ้น' },
+    { key: 'cancelled', label: 'ยกเลิก' }
+  ];
+
   return (
     <div>
-      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4 sm:mb-0">จัดการการจอง</h2>
-        <div className="flex space-x-2">
-          <button
-            className={`px-3 py-1 rounded-md ${filter === 'all' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700'}`}
-            onClick={() => setFilter('all')}
-          >
-            ทั้งหมด
-          </button>
-          <button
-            className={`px-3 py-1 rounded-md ${filter === 'pending' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700'}`}
-            onClick={() => setFilter('pending')}
-          >
-            รอการยืนยัน
-          </button>
-          <button
-            className={`px-3 py-1 rounded-md ${filter === 'confirmed' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700'}`}
-            onClick={() => setFilter('confirmed')}
-          >
-            ยืนยันแล้ว
-          </button>
-          <button
-            className={`px-3 py-1 rounded-md ${filter === 'completed' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700'}`}
-            onClick={() => setFilter('completed')}
-          >
-            เสร็จสิ้น
-          </button>
-          <button
-            className={`px-3 py-1 rounded-md ${filter === 'cancelled' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700'}`}
-            onClick={() => setFilter('cancelled')}
-          >
-            ยกเลิก
-          </button>
-        </div>
-      </div>
+      <Title level={4} style={{ marginBottom: 16 }}>จัดการการจอง</Title>
       
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  เลขที่การจอง
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ลูกค้า
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ห้อง
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  วันที่เข้าพัก
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  สถานะ
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  การชำระเงิน
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  จัดการ
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredBookings.map((booking) => (
-                <tr key={booking.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {booking.booking_number}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {booking.customer.first_name} {booking.customer.last_name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {booking.room.room_number} ({booking.room.room_type.name})
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDate(booking.check_in_date)} - {formatDate(booking.check_out_date)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(booking.status)}`}>
-                      {getStatusText(booking.status)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPaymentStatusBadgeClass(booking.payment_status)}`}>
-                      {getPaymentStatusText(booking.payment_status)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => openModal(booking)}
-                      className="text-indigo-600 hover:text-indigo-900"
-                    >
-                      รายละเอียด
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Card>
+        <Tabs 
+          activeKey={activeTab} 
+          onChange={setActiveTab}
+          items={tabItems}
+          style={{ marginBottom: 16 }}
+        />
+        
+        <Table
+          columns={columns}
+          dataSource={filteredBookings}
+          rowKey="id"
+          pagination={{ pageSize: 10 }}
+          loading={loading}
+        />
+      </Card>
       
-      {/* Modal for viewing and managing booking details */}
-      {isModalOpen && currentBooking && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
+      {/* Modal แสดงรายละเอียดการจอง */}
+      {currentBooking && (
+        <Modal
+          title={`รายละเอียดการจอง: ${currentBooking.booking_number}`}
+          open={isModalVisible}
+          onCancel={handleCancel}
+          footer={null}
+          width={700}
+        >
+          <Row gutter={[0, 16]}>
+            <Col span={24}>
+              <Card size="small" title="สถานะ">
+                <Space size="large">
+                  <div>
+                    <Text type="secondary">สถานะการจอง:</Text>
+                    <div>
+                      <Tag color={
+                        currentBooking.status === 'pending' ? 'gold' :
+                        currentBooking.status === 'confirmed' ? 'green' :
+                        currentBooking.status === 'completed' ? 'blue' :
+                        currentBooking.status === 'cancelled' ? 'red' : 'default'
+                      }>
+                        {getStatusText(currentBooking.status)}
+                      </Tag>
+                    </div>
+                  </div>
+                  <div>
+                    <Text type="secondary">สถานะการชำระเงิน:</Text>
+                    <div>
+                      <Tag color={
+                        currentBooking.payment_status === 'pending' ? 'gold' :
+                        currentBooking.payment_status === 'confirmed' ? 'green' :
+                        currentBooking.payment_status === 'rejected' ? 'red' :
+                        currentBooking.payment_status === 'refunded' ? 'blue' : 'default'
+                      }>
+                        {getPaymentStatusText(currentBooking.payment_status)}
+                      </Tag>
+                    </div>
+                  </div>
+                </Space>
+              </Card>
+            </Col>
             
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <Col span={24}>
+              <Card size="small" title="ข้อมูลลูกค้า">
+                <Descriptions column={{ xs: 1, sm: 2 }} size="small">
+                  <Descriptions.Item label="ชื่อ-นามสกุล">
+                    {currentBooking.customer.first_name} {currentBooking.customer.last_name}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="อีเมล">
+                    {currentBooking.customer.email}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="เบอร์โทร">
+                    {currentBooking.customer.phone}
+                  </Descriptions.Item>
+                </Descriptions>
+              </Card>
+            </Col>
             
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  รายละเอียดการจอง: {currentBooking.booking_number}
-                </h3>
-                
-                <div className="mb-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="text-sm font-medium text-gray-500">สถานะการจอง:</div>
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(currentBooking.status)}`}>
-                      {getStatusText(currentBooking.status)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="text-sm font-medium text-gray-500">สถานะการชำระเงิน:</div>
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPaymentStatusBadgeClass(currentBooking.payment_status)}`}>
-                      {getPaymentStatusText(currentBooking.payment_status)}
-                    </span>
-                  </div>
-                </div>
-                // src/pages/admin/Bookings.jsx (ต่อ)
-                <div className="border-t border-gray-200 pt-4">
-                  <h4 className="text-md font-medium text-gray-700 mb-2">ข้อมูลลูกค้า</h4>
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    <div className="text-sm">
-                      <span className="font-medium text-gray-500">ชื่อ-นามสกุล:</span>
-                      <span className="ml-1">{currentBooking.customer.first_name} {currentBooking.customer.last_name}</span>
-                    </div>
-                    <div className="text-sm">
-                      <span className="font-medium text-gray-500">อีเมล:</span>
-                      <span className="ml-1">{currentBooking.customer.email}</span>
-                    </div>
-                    <div className="text-sm">
-                      <span className="font-medium text-gray-500">เบอร์โทร:</span>
-                      <span className="ml-1">{currentBooking.customer.phone}</span>
-                    </div>
-                  </div>
-                  
-                  <h4 className="text-md font-medium text-gray-700 mb-2">ข้อมูลการจอง</h4>
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    <div className="text-sm">
-                      <span className="font-medium text-gray-500">เลขห้อง:</span>
-                      <span className="ml-1">{currentBooking.room.room_number}</span>
-                    </div>
-                    <div className="text-sm">
-                      <span className="font-medium text-gray-500">ประเภทห้อง:</span>
-                      <span className="ml-1">{currentBooking.room.room_type.name}</span>
-                    </div>
-                    <div className="text-sm">
-                      <span className="font-medium text-gray-500">วันที่เช็คอิน:</span>
-                      <span className="ml-1">{formatDate(currentBooking.check_in_date)}</span>
-                    </div>
-                    <div className="text-sm">
-                      <span className="font-medium text-gray-500">วันที่เช็คเอาท์:</span>
-                      <span className="ml-1">{formatDate(currentBooking.check_out_date)}</span>
-                    </div>
-                    <div className="text-sm">
-                      <span className="font-medium text-gray-500">ราคารวม:</span>
-                      <span className="ml-1">{currentBooking.total_price.toLocaleString()} บาท</span>
-                    </div>
-                    <div className="text-sm">
-                      <span className="font-medium text-gray-500">วันที่จอง:</span>
-                      <span className="ml-1">{new Date(currentBooking.created_at).toLocaleString('th-TH')}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <Col span={24}>
+              <Card size="small" title="ข้อมูลการจอง">
+                <Descriptions column={{ xs: 1, sm: 2 }} size="small">
+                  <Descriptions.Item label="เลขห้อง">
+                    {currentBooking.room.room_number}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="ประเภทห้อง">
+                    {currentBooking.room.room_type.name}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="วันที่เช็คอิน">
+                    {formatDate(currentBooking.check_in_date)}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="วันที่เช็คเอาท์">
+                    {formatDate(currentBooking.check_out_date)}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="ราคารวม">
+                    {currentBooking.total_price.toLocaleString()} บาท
+                  </Descriptions.Item>
+                  <Descriptions.Item label="วันที่จอง">
+                    {new Date(currentBooking.created_at).toLocaleString('th-TH')}
+                  </Descriptions.Item>
+                </Descriptions>
+              </Card>
+            </Col>
+            
+            <Col span={24}>
+              <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                 {currentBooking.status === 'pending' && (
                   <>
-                    <button
-                      type="button"
-                      className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:ml-3 sm:w-auto sm:text-sm"
+                    <Button
+                      type="primary"
                       onClick={() => handleStatusChange(currentBooking.id, 'confirmed')}
+                      loading={loading}
                     >
                       ยืนยันการจอง
-                    </button>
-                    <button
-                      type="button"
-                      className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-red-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                    </Button>
+                    <Button
+                      danger
                       onClick={() => handleStatusChange(currentBooking.id, 'cancelled')}
+                      loading={loading}
                     >
                       ยกเลิกการจอง
-                    </button>
+                    </Button>
                   </>
                 )}
                 
                 {currentBooking.status === 'confirmed' && (
-                  <button
-                    type="button"
-                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:ml-3 sm:w-auto sm:text-sm"
+                  <Button
+                    type="primary"
                     onClick={() => handleStatusChange(currentBooking.id, 'completed')}
+                    loading={loading}
                   >
                     เสร็จสิ้นการจอง
-                  </button>
+                  </Button>
                 )}
                 
-                <button
-                  type="button"
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:mt-0 sm:w-auto sm:text-sm"
-                  onClick={closeModal}
-                >
-                  ปิด
-                </button>
+                <Button onClick={handleCancel}>ปิด</Button>
               </div>
-            </div>
-          </div>
-        </div>
+            </Col>
+          </Row>
+        </Modal>
       )}
     </div>
   );

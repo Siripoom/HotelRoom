@@ -1,165 +1,210 @@
-// src/components/layout/AdminLayout.jsx
 import { useState } from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { 
+  Layout, 
+  Menu, 
+  Button, 
+  theme, 
+  Typography, 
+  Dropdown, 
+  Space,
+  Avatar
+} from "antd";
 import {
-  HomeIcon,
-  HomeModernIcon, // เปลี่ยนจาก BedIcon เป็น HomeModernIcon
-  CalendarIcon,
-  CreditCardIcon,
-  TagIcon,
-  ChartBarIcon,
-  Bars3Icon,
-  XMarkIcon,
-  ListBulletIcon,
-  ArrowRightOnRectangleIcon,
-} from "@heroicons/react/24/outline";
+  DashboardOutlined,
+  HomeOutlined,
+  CalendarOutlined,
+  DollarOutlined,
+  TagOutlined,
+  BarChartOutlined,
+  MenuUnfoldOutlined,
+  MenuFoldOutlined,
+  UnorderedListOutlined,
+  LogoutOutlined,
+  UserOutlined,
+  DownOutlined
+} from "@ant-design/icons";
 
-const sidebarNavigation = [
-  { name: "แดชบอร์ด", href: "/admin", icon: HomeIcon },
-  { name: "จัดการห้องพัก", href: "/admin/rooms", icon: HomeModernIcon }, // เปลี่ยนเป็น HomeModernIcon
-   { name: 'จัดการประเภทห้อง', href: '/admin/room-types', icon: ListBulletIcon }, 
-  { name: "จัดการการจอง", href: "/admin/bookings", icon: CalendarIcon },
-  { name: "จัดการการชำระเงิน", href: "/admin/payments", icon: CreditCardIcon },
-  { name: "โปรโมชั่น", href: "/admin/promotions", icon: TagIcon },
-  { name: "รายงานและสถิติ", href: "/admin/reports", icon: ChartBarIcon },
-];
+const { Header, Sider, Content } = Layout;
+const { Title } = Typography;
 
 function AdminLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { token } = theme.useToken();
+
+  const menuItems = [
+    {
+      key: "/admin",
+      icon: <DashboardOutlined />,
+      label: "แดชบอร์ด",
+    },
+    {
+      key: "/admin/rooms",
+      icon: <HomeOutlined />,
+      label: "จัดการห้องพัก",
+    },
+    {
+      key: "/admin/room-types",
+      icon: <UnorderedListOutlined />,
+      label: "จัดการประเภทห้อง",
+    },
+    {
+      key: "/admin/bookings",
+      icon: <CalendarOutlined />,
+      label: "จัดการการจอง",
+    },
+    {
+      key: "/admin/payments",
+      icon: <DollarOutlined />,
+      label: "จัดการการชำระเงิน",
+    },
+    {
+      key: "/admin/promotions",
+      icon: <TagOutlined />,
+      label: "โปรโมชั่น",
+    },
+    {
+      key: "/admin/reports",
+      icon: <BarChartOutlined />,
+      label: "รายงานและสถิติ",
+    },
+  ];
+
+  const getPageTitle = () => {
+    const item = menuItems.find((item) => item.key === location.pathname);
+    return item ? item.label : "แดชบอร์ด";
+  };
+
+  const userDropdownItems = {
+    items: [
+      {
+        key: '1',
+        label: 'โปรไฟล์',
+        icon: <UserOutlined />
+      },
+      {
+        key: '2',
+        label: 'ออกจากระบบ',
+        icon: <LogoutOutlined />,
+        danger: true
+      }
+    ],
+  };
+
+  const handleMenuClick = ({ key }) => {
+    navigate(key);
+  };
+
+  const handleUserMenuClick = ({ key }) => {
+    if (key === '2') {
+      // ออกจากระบบ - ในที่นี้จะเป็นเพียงการแสดง alert
+      alert('ออกจากระบบแล้ว');
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Mobile sidebar */}
-      <div
-        className={`fixed inset-0 z-40 lg:hidden ${
-          sidebarOpen ? "block" : "hidden"
-        }`}
+    <Layout style={{ minHeight: "100vh" }}>
+      <Sider
+        trigger={null}
+        collapsible
+        collapsed={collapsed}
+        theme="light"
+        style={{
+          boxShadow: "rgba(0, 0, 0, 0.05) 0px 1px 2px 0px",
+        }}
       >
         <div
-          className="fixed inset-0 bg-gray-600 bg-opacity-75"
-          onClick={() => setSidebarOpen(false)}
-        ></div>
-        <div className="fixed inset-y-0 left-0 flex max-w-full pt-5 pb-4 bg-white w-64">
-          <div className="flex flex-col h-full">
-            <div className="flex items-center px-4 justify-between">
-              <div className="text-xl font-bold text-gray-900">
-                ระบบจัดการโรงแรม
-              </div>
-              <button
-                type="button"
-                className="text-gray-500 hover:text-gray-600"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <XMarkIcon className="w-6 h-6" />
-              </button>
-            </div>
-            <nav className="mt-5 flex-1 px-2 bg-white space-y-1">
-              {sidebarNavigation.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`${
-                    location.pathname === item.href
-                      ? "bg-gray-100 text-gray-900"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  } group flex items-center px-2 py-2 text-base font-medium rounded-md`}
-                >
-                  <item.icon
-                    className={`${
-                      location.pathname === item.href
-                        ? "text-gray-500"
-                        : "text-gray-400 group-hover:text-gray-500"
-                    } mr-4 flex-shrink-0 h-6 w-6`}
-                  />
-                  {item.name}
-                </Link>
-              ))}
-            </nav>
-            <div className="mt-auto px-4 pb-4">
-              <button className="flex items-center px-2 py-2 text-base font-medium rounded-md text-red-600 hover:bg-red-50 w-full">
-                <ArrowRightOnRectangleIcon className="mr-4 flex-shrink-0 h-6 w-6 text-red-500" />
-                ออกจากระบบ
-              </button>
-            </div>
-          </div>
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: collapsed ? "center" : "flex-start",
+            height: 64,
+            padding: collapsed ? 0 : "0 16px",
+            backgroundColor: token.colorPrimary,
+            color: "white",
+          }}
+        >
+          {!collapsed && <Title level={4} style={{ color: "white", margin: 0 }}>ระบบจัดการโรงแรม</Title>}
         </div>
-      </div>
-
-      {/* Desktop sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex flex-col h-0 flex-1 border-r border-gray-200 bg-white">
-          <div className="flex items-center h-16 flex-shrink-0 px-4 bg-primary">
-            <div className="text-xl font-bold text-white">ระบบจัดการโรงแรม</div>
-          </div>
-          <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-            <nav className="mt-5 flex-1 px-2 bg-white space-y-1">
-              {sidebarNavigation.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`${
-                    location.pathname === item.href
-                      ? "bg-gray-100 text-gray-900"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
-                >
-                  <item.icon
-                    className={`${
-                      location.pathname === item.href
-                        ? "text-gray-500"
-                        : "text-gray-400 group-hover:text-gray-500"
-                    } mr-3 flex-shrink-0 h-6 w-6`}
-                  />
-                  {item.name}
-                </Link>
-              ))}
-            </nav>
-          </div>
-          <div className="px-4 pb-4 border-t border-gray-200">
-            <button className="flex items-center px-2 py-2 text-sm font-medium rounded-md text-red-600 hover:bg-red-50 w-full">
-              <ArrowRightOnRectangleIcon className="mr-3 flex-shrink-0 h-6 w-6 text-red-500" />
-              ออกจากระบบ
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className="lg:pl-64 flex flex-col">
-        <div className="sticky top-0 z-10 flex-shrink-0 flex h-16 bg-white shadow">
-          <button
-            type="button"
-            className="px-4 text-gray-500 lg:hidden focus:outline-none"
-            onClick={() => setSidebarOpen(true)}
+        <Menu
+          theme="light"
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          onClick={handleMenuClick}
+          items={menuItems}
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            width: "100%",
+            padding: "10px",
+            borderTop: "1px solid #f0f0f0",
+          }}
+        >
+          <Button
+            type="primary"
+            danger
+            icon={<LogoutOutlined />}
+            block
           >
-            <Bars3Icon className="h-6 w-6" />
-          </button>
-          <div className="flex-1 px-4 flex items-center justify-between">
-            <div className="flex-1">
-              <h1 className="text-xl font-semibold text-gray-900">
-                {sidebarNavigation.find(
-                  (item) => item.href === location.pathname
-                )?.name || "แอดมิน"}
-              </h1>
-            </div>
-            <div className="ml-4 flex items-center md:ml-6">
-              <span className="text-sm font-medium text-gray-700">
-                ผู้ดูแลระบบ
-              </span>
-            </div>
-          </div>
+            {!collapsed && "ออกจากระบบ"}
+          </Button>
         </div>
-
-        <main className="flex-1 pb-8">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-              <Outlet />
-            </div>
+      </Sider>
+      <Layout>
+        <Header
+          style={{
+            padding: 0,
+            background: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            boxShadow: "rgba(0, 0, 0, 0.05) 0px 1px 2px 0px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <Button
+              type="text"
+              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              onClick={() => setCollapsed(!collapsed)}
+              style={{
+                fontSize: "16px",
+                width: 64,
+                height: 64,
+              }}
+            />
+            <Title level={4} style={{ margin: 0 }}>
+              {getPageTitle()}
+            </Title>
           </div>
-        </main>
-      </div>
-    </div>
+          <div style={{ marginRight: 16 }}>
+            <Dropdown menu={userDropdownItems} trigger={['click']} onClick={handleUserMenuClick}>
+              <a onClick={(e) => e.preventDefault()}>
+                <Space>
+                  <Avatar size="small" icon={<UserOutlined />} />
+                  <span style={{ marginLeft: 8 }}>ผู้ดูแลระบบ</span>
+                  <DownOutlined />
+                </Space>
+              </a>
+            </Dropdown>
+          </div>
+        </Header>
+        <Content
+          style={{
+            margin: "16px",
+            padding: "16px",
+            background: "#f5f5f5",
+            minHeight: 280,
+            borderRadius: 4,
+          }}
+        >
+          <Outlet />
+        </Content>
+      </Layout>
+    </Layout>
   );
 }
 
