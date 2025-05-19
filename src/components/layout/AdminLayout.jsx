@@ -60,11 +60,7 @@ function AdminLayout() {
       icon: <DollarOutlined />,
       label: "จัดการการชำระเงิน",
     },
-    {
-      key: "/admin/promotions",
-      icon: <TagOutlined />,
-      label: "โปรโมชั่น",
-    },
+  
     {
       key: "/admin/reports",
       icon: <BarChartOutlined />,

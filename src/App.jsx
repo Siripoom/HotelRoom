@@ -1,6 +1,6 @@
 // src/App.jsx
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-// import HomePage from "./pages/HomePage";
+import HomePage from "./pages/HomePage";
 // import RoomListPage from "./pages/RoomListPage";
 // import RoomDetailPage from "./pages/RoomDetailPage";
 // import BookingPage from "./pages/BookingPage";
@@ -13,16 +13,16 @@ import AdminBookings from "./pages/admin/Bookings";
 import AdminPayments from "./pages/admin/Payments";
 // import AdminPromotions from "./pages/admin/Promotions";
 import AdminReports from "./pages/admin/Reports";
-import AdminRoomTypes from './pages/admin/RoomTypes';
-// import Header from "./components/layout/Header";
-// import Footer from "./components/layout/Footer";
+import AdminRoomTypes from "./pages/admin/RoomTypes";
+import Header from "./components/layout/Header";
+import Footer from "./components/layout/Footer";
 
 function App() {
   return (
     <Router>
       <Routes>
         {/* หน้า Frontend สำหรับลูกค้า */}
-        {/* <Route
+        <Route
           path="/"
           element={
             <>
@@ -34,7 +34,7 @@ function App() {
             </>
           }
         />
-        <Route
+        {/*  <Route
           path="/rooms"
           element={
             <>
@@ -99,7 +99,7 @@ function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="rooms" element={<AdminRooms />} />
-           <Route path="room-types" element={<AdminRoomTypes />} />
+          <Route path="room-types" element={<AdminRoomTypes />} />
           <Route path="bookings" element={<AdminBookings />} />
           <Route path="payments" element={<AdminPayments />} />
           {/* <Route path="promotions" element={<AdminPromotions />} /> */}
