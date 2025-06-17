@@ -227,10 +227,10 @@ function HomePage() {
             />
             <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center text-white p-8">
               <h1 className="text-4xl md:text-5xl font-bold mb-4 text-center">
-                ยินดีต้อนรับสู่ลักชัวรี่โฮเทล
+                KR .place
               </h1>
               <p className="text-xl md:text-2xl mb-8 text-center max-w-3xl">
-                สัมผัสประสบการณ์การพักผ่อนที่แสนพิเศษ ด้วยบริการระดับพรีเมียม
+                เค อาร์ เพลส
               </p>
               <Button
                 type="primary"
@@ -378,44 +378,6 @@ function HomePage() {
               </div>
             </div>
           </Card>
-        </div>
-      </section>
-
-      {/* About Section */}
-      <section className="py-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center gap-12">
-            <div className="md:w-1/2">
-              <Image
-                src="https://images.unsplash.com/photo-1564501049412-61c2a3083791?q=80&w=1000&auto=format"
-                alt="โรงแรมของเรา"
-                className="rounded-lg shadow-lg"
-              />
-            </div>
-            <div className="md:w-1/2">
-              <Title level={2} className="mb-6 text-3xl font-bold">
-                <span className="text-primary border-b-2 border-primary pb-2">
-                  เกี่ยวกับเรา
-                </span>
-              </Title>
-              <Paragraph className="text-lg mb-6">
-                ลักชัวรี่โฮเทลตั้งอยู่ในทำเลที่สวยงาม
-                ห้องพักทุกห้องได้รับการออกแบบอย่างพิถีพิถัน
-                เพื่อให้คุณได้รับความสะดวกสบายและความเป็นส่วนตัวสูงสุด
-              </Paragraph>
-              <Paragraph className="text-lg mb-6">
-                ด้วยประสบการณ์กว่า 15 ปี เราให้บริการด้วยมาตรฐานระดับ 5 ดาว
-                พร้อมสิ่งอำนวยความสะดวกครบครัน
-                เพื่อให้การพักผ่อนของคุณเป็นช่วงเวลาที่พิเศษ
-              </Paragraph>
-              <Space>
-                <Button type="primary" size="large">
-                  เรียนรู้เพิ่มเติม
-                </Button>
-                <Button size="large">ติดต่อเรา</Button>
-              </Space>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -583,176 +545,6 @@ function HomePage() {
                 title="กิจกรรมพิเศษ"
                 description="กิจกรรมพิเศษสำหรับผู้เข้าพัก"
               />
-            </Col>
-          </Row>
-        </div>
-      </section>
-
-      {/* Testimonial Section */}
-      {/* <section className="py-20 px-4 bg-gray-50">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <Title level={2} className="mb-4 text-3xl font-bold">
-              <span className="border-b-2 border-primary pb-2">รีวิวจากลูกค้า</span>
-            </Title>
-            <Paragraph className="text-lg max-w-2xl mx-auto">
-              เสียงตอบรับจากผู้ที่เคยมาใช้บริการของเรา
-            </Paragraph>
-          </div>
-
-          <Row gutter={[24, 24]}>
-            {TESTIMONIALS.map((testimonial) => (
-              <Col xs={24} md={8} key={testimonial.id}>
-                <Card className="h-full shadow-md">
-                  <div className="flex items-center mb-4">
-                    <Image
-                      src={testimonial.avatar}
-                      alt={testimonial.name}
-                      width={64}
-                      height={64}
-                      className="rounded-full mr-4"
-                    />
-                    <div>
-                      <Title level={5} className="m-0">
-                        {testimonial.name}
-                      </Title>
-                      <Text type="secondary">{testimonial.date}</Text>
-                    </div>
-                  </div>
-                  <Rate disabled defaultValue={testimonial.rating} className="mb-4" />
-                  <Paragraph>{testimonial.comment}</Paragraph>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        </div>
-      </section> */}
-
-      {/* Contact Section */}
-      <section className="py-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <Title level={2} className="mb-4 text-3xl font-bold">
-              <span className="border-b-2 border-primary pb-2">ติดต่อเรา</span>
-            </Title>
-            <Paragraph className="text-lg max-w-2xl mx-auto">
-              สอบถามข้อมูลเพิ่มเติมหรือจองห้องพักกับเรา
-            </Paragraph>
-          </div>
-
-          <Row gutter={[32, 32]}>
-            <Col xs={24} md={12}>
-              <Card className="h-full shadow-md">
-                <Title level={4} className="mb-6">
-                  ข้อมูลติดต่อ
-                </Title>
-                <Space direction="vertical" size="large" className="w-full">
-                  <div className="flex items-center">
-                    <EnvironmentOutlined className="text-2xl text-primary mr-4" />
-                    <div>
-                      <Text strong className="block">
-                        ที่อยู่
-                      </Text>
-                      <Text>
-                        123 ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110
-                      </Text>
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <PhoneOutlined className="text-2xl text-primary mr-4" />
-                    <div>
-                      <Text strong className="block">
-                        โทรศัพท์
-                      </Text>
-                      <Text>02-123-4567, 081-234-5678</Text>
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <MailOutlined className="text-2xl text-primary mr-4" />
-                    <div>
-                      <Text strong className="block">
-                        อีเมล
-                      </Text>
-                      <Text>info@luxuryhotel.com</Text>
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <ClockCircleOutlined className="text-2xl text-primary mr-4" />
-                    <div>
-                      <Text strong className="block">
-                        เวลาทำการ
-                      </Text>
-                      <Text>เปิดให้บริการตลอด 24 ชั่วโมง</Text>
-                    </div>
-                  </div>
-                </Space>
-              </Card>
-            </Col>
-            <Col xs={24} md={12}>
-              <Card className="h-full shadow-md">
-                <Title level={4} className="mb-6">
-                  ส่งข้อความถึงเรา
-                </Title>
-                <Space direction="vertical" size="middle" className="w-full">
-                  <Input placeholder="ชื่อ-นามสกุล" size="large" />
-                  <Input placeholder="อีเมล" size="large" />
-                  <Input placeholder="เบอร์โทรศัพท์" size="large" />
-                  <Input.TextArea placeholder="ข้อความ" rows={4} size="large" />
-                  <Button type="primary" size="large" block>
-                    ส่งข้อความ
-                  </Button>
-                </Space>
-              </Card>
-            </Col>
-          </Row>
-        </div>
-      </section>
-
-      {/* Map Section */}
-      <section className="py-10">
-        <div className="w-full h-[400px] bg-gray-200">
-          {/* ตัวอย่าง iframe แสดงแผนที่ Google Maps - ในโปรเจคจริงให้ใส่ API Key และพิกัดที่ถูกต้อง */}
-          <iframe
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3875.544877800073!2d100.56324707608367!3d13.740470597994073!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x30e29ee94f18f055%3A0x5046d4d0a95a090!2sSukhumvit%20Rd%2C%20Khlong%20Toei%2C%20Bangkok!5e0!3m2!1sen!2sth!4v1684822283243!5m2!1sen!2sth"
-            width="100%"
-            height="100%"
-            style={{ border: 0 }}
-            allowFullScreen=""
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          ></iframe>
-        </div>
-      </section>
-
-      {/* Newsletter */}
-      <section className="py-16 px-4 bg-primary">
-        <div className="max-w-6xl mx-auto">
-          <Row gutter={24} align="middle">
-            <Col xs={24} md={12}>
-              <div className="text-white">
-                <Title level={2} className="text-white mb-4">
-                  สมัครรับข่าวสารและโปรโมชั่น
-                </Title>
-                <Paragraph className="text-white opacity-80 text-lg">
-                  สมัครรับจดหมายข่าวจากเรา
-                  เพื่อรับข้อมูลเกี่ยวกับโปรโมชั่นพิเศษและกิจกรรมต่างๆ
-                </Paragraph>
-              </div>
-            </Col>
-            <Col xs={24} md={12}>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Input
-                  size="large"
-                  placeholder="กรอกอีเมลของคุณ"
-                  className="flex-1"
-                />
-                <Button
-                  size="large"
-                  className="bg-white text-primary hover:text-primary"
-                >
-                  สมัครรับข่าวสาร
-                </Button>
-              </div>
             </Col>
           </Row>
         </div>
