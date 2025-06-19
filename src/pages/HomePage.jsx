@@ -1,3 +1,4 @@
+// src/pages/HomePage.jsx
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -36,7 +37,7 @@ import {
   FacebookOutlined,
   TwitterOutlined,
 } from "@ant-design/icons";
-import { supabase } from "../lib/supabase";
+import roomService from "../services/roomService";
 
 const { Title, Text, Paragraph } = Typography;
 const { RangePicker } = DatePicker;
@@ -84,6 +85,7 @@ const FeatureIcon = ({ icon, title, description }) => (
 
 function HomePage() {
   const [featuredRooms, setFeaturedRooms] = useState([]);
+  const [roomTypes, setRoomTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useState({
     dates: null,
@@ -93,123 +95,64 @@ function HomePage() {
 
   useEffect(() => {
     fetchFeaturedRooms();
+    fetchRoomTypes();
   }, []);
 
   const fetchFeaturedRooms = async () => {
     setLoading(true);
     try {
-      // ในโปรเจคจริง: ดึงข้อมูลจาก Supabase
-      /*
-      const { data, error } = await supabase
-        .from('rooms')
-        .select(`
-          id,
-          room_number,
-          main_image,
-          description,
-          status,
-          room_type:room_type_id (
-            id,
-            name,
-            base_price,
-            capacity,
-            amenities
-          )
-        `)
-        .eq('status', 'available')
-        .limit(3);
-        
-      if (error) throw error;
+      const data = await roomService.getFeaturedRooms(3);
       setFeaturedRooms(data);
-      */
-
-      // Mock data สำหรับตัวอย่าง
-      const mockFeaturedRooms = [
-        {
-          id: 1,
-          room_number: "101",
-          main_image:
-            "https://images.unsplash.com/photo-1566665797739-1674de7a421a?q=80&w=800&auto=format",
-          description:
-            "ห้องพักหรูหราที่ตกแต่งอย่างสวยงาม พร้อมวิวภูเขาที่สวยงาม เหมาะสำหรับการพักผ่อน",
-          status: "available",
-          room_type: {
-            id: 1,
-            name: "Deluxe Room",
-            base_price: 2500,
-            capacity: 2,
-            amenities: ["Free WiFi", "Air Conditioning", "Mini Bar", "TV"],
-          },
-        },
-        {
-          id: 2,
-          room_number: "201",
-          main_image:
-            "https://images.unsplash.com/photo-1587985064135-0366536eab42?q=80&w=800&auto=format",
-          description:
-            "ห้องสวีทหรูหรา กว้างขวาง พร้อมวิวทะเลที่สวยงาม มีอ่างจากุซซี่ส่วนตัว",
-          status: "available",
-          room_type: {
-            id: 2,
-            name: "Executive Suite",
-            base_price: 4500,
-            capacity: 2,
-            amenities: [
-              "Free WiFi",
-              "Air Conditioning",
-              "Jacuzzi",
-              "Mini Bar",
-              "TV",
-              "Balcony",
-            ],
-          },
-        },
-        {
-          id: 3,
-          room_number: "301",
-          main_image:
-            "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?q=80&w=800&auto=format",
-          description:
-            "ห้องพักสำหรับครอบครัว กว้างขวาง พร้อมเตียงขนาดใหญ่ และเตียงเสริม",
-          status: "available",
-          room_type: {
-            id: 3,
-            name: "Family Room",
-            base_price: 3500,
-            capacity: 4,
-            amenities: [
-              "Free WiFi",
-              "Air Conditioning",
-              "Mini Bar",
-              "TV",
-              "Extra Bed",
-            ],
-          },
-        },
-      ];
-
-      // จำลองการโหลดข้อมูล
-      setTimeout(() => {
-        setFeaturedRooms(mockFeaturedRooms);
-        setLoading(false);
-      }, 1000);
     } catch (error) {
       console.error("Error fetching featured rooms:", error);
       message.error("ไม่สามารถโหลดข้อมูลห้องพักได้");
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleSearch = () => {
+  const fetchRoomTypes = async () => {
+    try {
+      const data = await roomService.getRoomTypes();
+      setRoomTypes(data);
+    } catch (error) {
+      console.error("Error fetching room types:", error);
+    }
+  };
+
+  const handleSearch = async () => {
     if (!searchParams.dates) {
       message.warning("กรุณาเลือกวันที่เข้าพัก");
       return;
     }
 
-    // ในโปรเจคจริง: บันทึกพารามิเตอร์การค้นหาและนำทางไปยังหน้ารายการห้องพัก
-    console.log("Search params:", searchParams);
-    message.success("กำลังค้นหาห้องพัก...");
-    // navigate('/rooms', { state: { searchParams } });
+    try {
+      const searchQuery = {
+        checkInDate: searchParams.dates[0].format("YYYY-MM-DD"),
+        checkOutDate: searchParams.dates[1].format("YYYY-MM-DD"),
+        guests: searchParams.guests,
+        roomType:
+          searchParams.roomType !== "all" ? searchParams.roomType : null,
+      };
+
+      // นำทางไปยังหน้ารายการห้องพักพร้อมพารามิเตอร์การค้นหา
+      window.location.href = `/rooms?search=${encodeURIComponent(
+        JSON.stringify(searchQuery)
+      )}`;
+    } catch (error) {
+      console.error("Search error:", error);
+      message.error("เกิดข้อผิดพลาดในการค้นหา");
+    }
+  };
+
+  const getAmenityIcon = (amenity) => {
+    const amenityLower = amenity.toLowerCase();
+    if (amenityLower.includes("wifi")) return <WifiOutlined />;
+    if (amenityLower.includes("car") || amenityLower.includes("parking"))
+      return <CarOutlined />;
+    if (amenityLower.includes("coffee") || amenityLower.includes("bar"))
+      return <CoffeeOutlined />;
+    return <StarOutlined />;
   };
 
   return (
@@ -223,35 +166,6 @@ function HomePage() {
               style={{
                 backgroundImage:
                   "url('https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=1920&auto=format')",
-              }}
-            />
-            <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center text-white p-8">
-              <h1 className="text-4xl md:text-5xl font-bold mb-4 text-center">
-                KR .place
-              </h1>
-              <p className="text-xl md:text-2xl mb-8 text-center max-w-3xl">
-                เค อาร์ เพลส
-              </p>
-              <Button
-                type="primary"
-                size="large"
-                className="text-lg h-12 px-8"
-                onClick={() =>
-                  document
-                    .getElementById("booking-section")
-                    .scrollIntoView({ behavior: "smooth" })
-                }
-              >
-                จองห้องพักเลย
-              </Button>
-            </div>
-          </div>
-          <div className="h-[600px] relative">
-            <div
-              className="w-full h-full bg-cover bg-center"
-              style={{
-                backgroundImage:
-                  "url('https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?q=80&w=1920&auto=format')",
               }}
             />
             <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center text-white p-8">
@@ -360,9 +274,11 @@ function HomePage() {
                   }
                 >
                   <Option value="all">ทุกประเภท</Option>
-                  <Option value="1">Deluxe Room</Option>
-                  <Option value="2">Executive Suite</Option>
-                  <Option value="3">Family Room</Option>
+                  {roomTypes.map((type) => (
+                    <Option key={type.id} value={type.id}>
+                      {type.name}
+                    </Option>
+                  ))}
                 </Select>
               </div>
               <div className="md:w-1/4 flex items-end">
@@ -397,85 +313,114 @@ function HomePage() {
           </div>
 
           <Row gutter={[24, 24]}>
-            {loading
-              ? // Loading skeletons
-                Array(3)
-                  .fill()
-                  .map((_, index) => (
-                    <Col xs={24} md={8} key={`skeleton-${index}`}>
-                      <Card
-                        className="h-full"
-                        cover={
-                          <Skeleton.Image className="w-full h-48" active />
-                        }
-                      >
-                        <Skeleton active paragraph={{ rows: 3 }} />
-                      </Card>
-                    </Col>
-                  ))
-              : featuredRooms.map((room) => (
-                  <Col xs={24} md={8} key={room.id}>
+            {loading ? (
+              // Loading skeletons
+              Array(3)
+                .fill()
+                .map((_, index) => (
+                  <Col xs={24} md={8} key={`skeleton-${index}`}>
                     <Card
-                      hoverable
-                      className="h-full shadow-md transition-all duration-300 hover:shadow-xl"
-                      cover={
-                        <div className="h-48 overflow-hidden">
-                          <img
-                            alt={room.room_type.name}
-                            src={room.main_image}
-                            className="w-full h-full object-cover transition-transform duration-500 transform hover:scale-110"
-                          />
-                        </div>
-                      }
+                      className="h-full"
+                      cover={<Skeleton.Image className="w-full h-48" active />}
                     >
-                      <div className="mb-2 flex justify-between items-center">
-                        <Title level={4} className="m-0">
-                          {room.room_type.name}
-                        </Title>
-                        <Tag color="success">
-                          {room.room_type.base_price.toLocaleString()} บาท/คืน
-                        </Tag>
-                      </div>
-                      <div className="mb-4">
-                        <Space>
-                          <Tag
-                            icon={<HomeOutlined />}
-                          >{`ห้อง ${room.room_number}`}</Tag>
-                          <Tag
-                            icon={<UserOutlined />}
-                          >{`${room.room_type.capacity} คน`}</Tag>
-                        </Space>
-                      </div>
-                      <Paragraph className="mb-4 h-12 overflow-hidden">
-                        {room.description}
-                      </Paragraph>
-                      <div className="mb-4">
-                        {room.room_type.amenities
-                          .slice(0, 3)
-                          .map((amenity, index) => (
-                            <Tag key={index} className="mb-1 mr-1">
-                              {amenity}
-                            </Tag>
-                          ))}
-                        {room.room_type.amenities.length > 3 && (
-                          <Tag className="mb-1">
-                            +{room.room_type.amenities.length - 3}
-                          </Tag>
-                        )}
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <Link to={`/rooms/${room.id}`}>
-                          <Button type="link" className="p-0">
-                            ดูรายละเอียด <RightOutlined />
-                          </Button>
-                        </Link>
-                        <Link to="/booking" state={{ roomId: room.id }}>
-                          <Button type="primary">จองเลย</Button>
-                        </Link>
-                      </div>
+                      <Skeleton active paragraph={{ rows: 3 }} />
                     </Card>
                   </Col>
-                ))}
+                ))
+            ) : featuredRooms.length > 0 ? (
+              featuredRooms.map((room) => (
+                <Col xs={24} md={8} key={room.id}>
+                  <Card
+                    hoverable
+                    className="h-full shadow-md transition-all duration-300 hover:shadow-xl"
+                    cover={
+                      <div className="h-48 overflow-hidden">
+                        <img
+                          alt={room.room_type.name}
+                          src={
+                            room.main_image ||
+                            "https://images.unsplash.com/photo-1566665797739-1674de7a421a?q=80&w=800&auto=format"
+                          }
+                          className="w-full h-full object-cover transition-transform duration-500 transform hover:scale-110"
+                        />
+                      </div>
+                    }
+                  >
+                    <div className="mb-2 flex justify-between items-center">
+                      <Title level={4} className="m-0">
+                        {room.room_type.name}
+                      </Title>
+                      <Tag color="success">
+                        {room.room_type.base_price.toLocaleString()} บาท/คืน
+                      </Tag>
+                    </div>
+                    <div className="mb-4">
+                      <Space>
+                        <Tag
+                          icon={<HomeOutlined />}
+                        >{`ห้อง ${room.room_number}`}</Tag>
+                        <Tag
+                          icon={<UserOutlined />}
+                        >{`${room.room_type.capacity} คน`}</Tag>
+                      </Space>
+                    </div>
+                    <Paragraph className="mb-4 h-12 overflow-hidden">
+                      {room.description ||
+                        room.room_type.description ||
+                        "ห้องพักคุณภาพดีพร้อมสิ่งอำนวยความสะดวกครบครัน"}
+                    </Paragraph>
+                    <div className="mb-4">
+                      {room.room_type.amenities &&
+                      room.room_type.amenities.length > 0 ? (
+                        <>
+                          {room.room_type.amenities
+                            .slice(0, 3)
+                            .map((amenity, index) => (
+                              <Tag
+                                key={index}
+                                className="mb-1 mr-1"
+                                icon={getAmenityIcon(amenity)}
+                              >
+                                {amenity}
+                              </Tag>
+                            ))}
+                          {room.room_type.amenities.length > 3 && (
+                            <Tag className="mb-1">
+                              +{room.room_type.amenities.length - 3}
+                            </Tag>
+                          )}
+                        </>
+                      ) : (
+                        <Tag>พร้อมสิ่งอำนวยความสะดวก</Tag>
+                      )}
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <Link to={`/rooms/${room.id}`}>
+                        <Button type="link" className="p-0">
+                          ดูรายละเอียด <RightOutlined />
+                        </Button>
+                      </Link>
+                      <Link to="/booking" state={{ roomId: room.id }}>
+                        <Button type="primary">จองเลย</Button>
+                      </Link>
+                    </div>
+                  </Card>
+                </Col>
+              ))
+            ) : (
+              // No rooms found
+              <Col span={24}>
+                <div style={{ textAlign: "center", padding: "40px 0" }}>
+                  <Title level={4}>ไม่พบข้อมูลห้องพัก</Title>
+                  <Paragraph>
+                    กรุณาตรวจสอบการเชื่อมต่อฐานข้อมูล หรือติดต่อผู้ดูแลระบบ
+                  </Paragraph>
+                  <Button onClick={fetchFeaturedRooms}>
+                    ลองโหลดข้อมูลอีกครั้ง
+                  </Button>
+                </div>
+              </Col>
+            )}
           </Row>
 
           <div className="text-center mt-12">
@@ -545,6 +490,151 @@ function HomePage() {
                 title="กิจกรรมพิเศษ"
                 description="กิจกรรมพิเศษสำหรับผู้เข้าพัก"
               />
+            </Col>
+          </Row>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="py-20 px-4 bg-gray-50">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <Title level={2} className="mb-4 text-3xl font-bold">
+              <span className="border-b-2 border-primary pb-2">
+                รีวิวจากผู้เข้าพัก
+              </span>
+            </Title>
+            <Paragraph className="text-lg max-w-2xl mx-auto">
+              ฟังความคิดเห็นจากผู้เข้าพักที่มีประสบการณ์ดีกับเรา
+            </Paragraph>
+          </div>
+
+          <Row gutter={[24, 24]}>
+            {TESTIMONIALS.map((testimonial) => (
+              <Col xs={24} md={8} key={testimonial.id}>
+                <Card className="h-full">
+                  <div className="text-center mb-4">
+                    <div className="mb-3">
+                      <img
+                        src={testimonial.avatar}
+                        alt={testimonial.name}
+                        className="w-16 h-16 rounded-full mx-auto"
+                      />
+                    </div>
+                    <Title level={5} className="mb-1">
+                      {testimonial.name}
+                    </Title>
+                    <Rate disabled defaultValue={testimonial.rating} />
+                  </div>
+                  <Paragraph className="text-center italic mb-4">
+                    "{testimonial.comment}"
+                  </Paragraph>
+                  <div className="text-center">
+                    <Text type="secondary">{testimonial.date}</Text>
+                  </div>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section className="py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <Row gutter={[48, 48]} align="middle">
+            <Col xs={24} lg={12}>
+              <Title level={2} className="mb-6">
+                ติดต่อเรา
+              </Title>
+              <Space
+                direction="vertical"
+                size="large"
+                style={{ width: "100%" }}
+              >
+                <div>
+                  <Space>
+                    <EnvironmentOutlined className="text-primary text-xl" />
+                    <div>
+                      <Text strong>ที่อยู่</Text>
+                      <div>123 ถนนสุขุมวิท, สวนหลวง, กรุงเทพฯ 10250</div>
+                    </div>
+                  </Space>
+                </div>
+                <div>
+                  <Space>
+                    <PhoneOutlined className="text-primary text-xl" />
+                    <div>
+                      <Text strong>โทรศัพท์</Text>
+                      <div>+66 2 123 4567</div>
+                    </div>
+                  </Space>
+                </div>
+                <div>
+                  <Space>
+                    <MailOutlined className="text-primary text-xl" />
+                    <div>
+                      <Text strong>อีเมล</Text>
+                      <div>info@luxuryhotel.com</div>
+                    </div>
+                  </Space>
+                </div>
+                <div>
+                  <Space>
+                    <ClockCircleOutlined className="text-primary text-xl" />
+                    <div>
+                      <Text strong>เวลาทำการ</Text>
+                      <div>เช็คอิน: 14:00 | เช็คเอาท์: 12:00</div>
+                    </div>
+                  </Space>
+                </div>
+              </Space>
+
+              <Divider />
+
+              <div>
+                <Text strong className="mb-3 block">
+                  ติดตามเราได้ที่
+                </Text>
+                <Space size="middle">
+                  <Button
+                    shape="circle"
+                    icon={<FacebookOutlined />}
+                    style={{
+                      backgroundColor: "#1877f2",
+                      borderColor: "#1877f2",
+                      color: "#fff",
+                    }}
+                  />
+                  <Button
+                    shape="circle"
+                    icon={<InstagramOutlined />}
+                    style={{
+                      backgroundColor: "#E4405F",
+                      borderColor: "#E4405F",
+                      color: "#fff",
+                    }}
+                  />
+                  <Button
+                    shape="circle"
+                    icon={<TwitterOutlined />}
+                    style={{
+                      backgroundColor: "#1DA1F2",
+                      borderColor: "#1DA1F2",
+                      color: "#fff",
+                    }}
+                  />
+                </Space>
+              </div>
+            </Col>
+            <Col xs={24} lg={12}>
+              <div className="text-center">
+                <img
+                  src="https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=600&auto=format"
+                  alt="Hotel Exterior"
+                  className="w-full h-80 object-cover rounded-lg shadow-lg"
+                />
+              </div>
             </Col>
           </Row>
         </div>

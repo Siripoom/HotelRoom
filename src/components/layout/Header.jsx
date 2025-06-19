@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Layout,
   Menu,
@@ -28,6 +28,7 @@ const HeaderComponent = () => {
   const [visible, setVisible] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Handle scrolling effect
   useEffect(() => {
@@ -55,7 +56,6 @@ const HeaderComponent = () => {
       key: "/rooms",
       label: "ห้องพัก",
     },
-
     {
       key: "/contact",
       label: "ติดต่อเรา",
@@ -83,6 +83,17 @@ const HeaderComponent = () => {
     setVisible(false);
   };
 
+  // Handle menu click navigation
+  const handleMenuClick = ({ key }) => {
+    navigate(key);
+  };
+
+  // Handle mobile menu click
+  const handleMobileMenuClick = ({ key }) => {
+    navigate(key);
+    onClose(); // ปิด drawer หลังจากคลิก
+  };
+
   return (
     <>
       {/* Top Header with Contact Info */}
@@ -102,15 +113,7 @@ const HeaderComponent = () => {
               <Space size={20}>
                 <span>
                   <PhoneOutlined style={{ marginRight: "8px" }} />
-                  <Text style={{ color: "white" }}>+66 2 123 4567</Text>
-                </span>
-                <span>
-                  <MailOutlined style={{ marginRight: "8px" }} />
-                  <Text style={{ color: "white" }}>info@luxuryhotel.com</Text>
-                </span>
-                <span>
-                  <EnvironmentOutlined style={{ marginRight: "8px" }} />
-                  <Text style={{ color: "white" }}>สวนหลวง, กรุงเทพฯ</Text>
+                  <Text style={{ color: "white" }}>+66 819797986</Text>
                 </span>
               </Space>
             </Col>
@@ -162,7 +165,7 @@ const HeaderComponent = () => {
                   color: scrolled ? "#AA8453" : "white",
                 }}
               >
-                LUXURY HOTEL
+                KR .place
               </div>
             </Link>
           </div>
@@ -175,6 +178,7 @@ const HeaderComponent = () => {
             <Menu
               mode="horizontal"
               selectedKeys={[location.pathname]}
+              onClick={handleMenuClick}
               style={{
                 border: "none",
                 backgroundColor: "transparent",
@@ -205,17 +209,16 @@ const HeaderComponent = () => {
                     <UserOutlined /> บัญชีผู้ใช้ <DownOutlined />
                   </Button>
                 </Dropdown>
-                <Link to="/booking">
-                  <Button
-                    type="primary"
-                    style={{
-                      backgroundColor: "#AA8453",
-                      borderColor: "#AA8453",
-                    }}
-                  >
-                    จองห้องพัก
-                  </Button>
-                </Link>
+                <Button
+                  type="primary"
+                  style={{
+                    backgroundColor: "#AA8453",
+                    borderColor: "#AA8453",
+                  }}
+                  onClick={() => navigate("/rooms")}
+                >
+                  จองห้องพัก
+                </Button>
               </Space>
             </div>
 
@@ -248,7 +251,7 @@ const HeaderComponent = () => {
           <div
             style={{ fontSize: "20px", fontWeight: "bold", color: "#AA8453" }}
           >
-            LUXURY HOTEL
+            KR .place
           </div>
         }
         placement="right"
@@ -261,35 +264,8 @@ const HeaderComponent = () => {
           selectedKeys={[location.pathname]}
           style={{ border: "none" }}
           items={menuItems}
-          onClick={onClose}
+          onClick={handleMobileMenuClick}
         />
-        <div style={{ padding: "20px 0" }}>
-          <Space direction="vertical" style={{ width: "100%" }}>
-            <Button
-              icon={<UserOutlined />}
-              style={{ width: "100%", textAlign: "left" }}
-            >
-              เข้าสู่ระบบ
-            </Button>
-            <Button
-              icon={<UserOutlined />}
-              style={{ width: "100%", textAlign: "left" }}
-            >
-              สมัครสมาชิก
-            </Button>
-            <Button
-              type="primary"
-              style={{
-                width: "100%",
-                marginTop: "20px",
-                backgroundColor: "#AA8453",
-                borderColor: "#AA8453",
-              }}
-            >
-              จองห้องพัก
-            </Button>
-          </Space>
-        </div>
         <div
           style={{
             marginTop: "20px",
@@ -300,21 +276,27 @@ const HeaderComponent = () => {
           <Space direction="vertical" size="middle">
             <div>
               <PhoneOutlined style={{ marginRight: "8px" }} />
-              +66 2 123 4567
-            </div>
-            <div>
-              <MailOutlined style={{ marginRight: "8px" }} />
-              info@luxuryhotel.com
-            </div>
-            <div>
-              <EnvironmentOutlined style={{ marginRight: "8px" }} />
-              สวนหลวง, กรุงเทพฯ
-            </div>
-            <div>
-              <ClockCircleOutlined style={{ marginRight: "8px" }} />
-              เช็คอิน: 14:00 | เช็คเอาท์: 12:00
+              +66 819797986
             </div>
           </Space>
+        </div>
+
+        {/* Mobile Booking Button */}
+        <div style={{ padding: "20px 0" }}>
+          <Button
+            type="primary"
+            style={{
+              width: "100%",
+              backgroundColor: "#AA8453",
+              borderColor: "#AA8453",
+            }}
+            onClick={() => {
+              navigate("/rooms");
+              onClose();
+            }}
+          >
+            จองห้องพัก
+          </Button>
         </div>
       </Drawer>
 

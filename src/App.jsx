@@ -1,8 +1,9 @@
 // src/App.jsx
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import HomePage from "./pages/HomePage";
-// import RoomListPage from "./pages/RoomListPage";
-// import RoomDetailPage from "./pages/RoomDetailPage";
+import RoomListPage from "./pages/RoomListPage";
+import RoomDetailPage from "./pages/RoomDetailPage";
+import ContactPage from "./pages/ContactPage";
 // import BookingPage from "./pages/BookingPage";
 // import PaymentPage from "./pages/PaymentPage";
 // import BookingConfirmationPage from "./pages/BookingConfirmationPage";
@@ -34,7 +35,7 @@ function App() {
             </>
           }
         />
-        {/*  <Route
+        <Route
           path="/rooms"
           element={
             <>
@@ -59,6 +60,18 @@ function App() {
           }
         />
         <Route
+          path="/contact"
+          element={
+            <>
+              <Header />
+              <main className="flex-grow">
+                <ContactPage />
+              </main>
+              <Footer />
+            </>
+          }
+        />
+        {/*  <Route
           path="/booking"
           element={
             <>
