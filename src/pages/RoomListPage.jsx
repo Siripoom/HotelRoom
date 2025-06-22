@@ -409,11 +409,7 @@ function RoomListPage() {
                             ดูรายละเอียด
                           </Button>
                         </Link>,
-                        <Link
-                          to="/booking"
-                          state={{ roomId: room.id }}
-                          key="book"
-                        >
+                        <Link to={`/rooms/${room.id}`} key="book">
                           <Button type="primary">จองเลย</Button>
                         </Link>,
                       ]}

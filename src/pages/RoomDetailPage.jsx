@@ -178,7 +178,7 @@ function RoomDetailPage() {
       </div>
     );
   }
-
+  console.log(bookingParams);
   return (
     <div className="room-detail-page">
       <div style={{ padding: "20px" }}>
@@ -519,6 +519,7 @@ function RoomDetailPage() {
                             state={{
                               roomId: room.id,
                               dates: bookingParams.dates,
+
                               guests: bookingParams.guests,
                               priceInfo: availability,
                             }}

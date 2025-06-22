@@ -400,7 +400,7 @@ function HomePage() {
                           ดูรายละเอียด <RightOutlined />
                         </Button>
                       </Link>
-                      <Link to="/booking" state={{ roomId: room.id }}>
+                      <Link to={`/rooms/${room.id}`}>
                         <Button type="primary">จองเลย</Button>
                       </Link>
                     </div>
