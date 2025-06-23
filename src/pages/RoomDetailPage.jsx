@@ -88,7 +88,7 @@ function RoomDetailPage() {
       console.error("Error fetching related rooms:", error);
     }
   };
-
+  //ok
   const fetchReviews = async () => {
     try {
       const data = await roomService.getRoomReviews(roomId);
