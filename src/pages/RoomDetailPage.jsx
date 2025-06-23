@@ -1,6 +1,6 @@
-// src/pages/RoomDetailPage.jsx
+// src/pages/RoomDetailPage.jsx - ปรับปรุงแล้ว
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Row,
   Col,
@@ -47,6 +47,7 @@ const { Option } = Select;
 
 function RoomDetailPage() {
   const { roomId } = useParams();
+  const navigate = useNavigate();
   const [room, setRoom] = useState(null);
   const [relatedRooms, setRelatedRooms] = useState([]);
   const [reviews, setReviews] = useState([]);
@@ -88,7 +89,7 @@ function RoomDetailPage() {
       console.error("Error fetching related rooms:", error);
     }
   };
-  //ok
+
   const fetchReviews = async () => {
     try {
       const data = await roomService.getRoomReviews(roomId);
@@ -135,6 +136,35 @@ function RoomDetailPage() {
     }
   };
 
+  // ฟังก์ชันจองห้องพัก - ปรับปรุงใหม่
+  const handleBooking = () => {
+    if (!bookingParams.dates || bookingParams.dates.length !== 2) {
+      message.error("กรุณาเลือกวันที่เข้าพักก่อน");
+      return;
+    }
+
+    if (!availability || !availability.available) {
+      message.error("กรุณาตรวจสอบความพร้อมของห้องก่อน");
+      return;
+    }
+
+    // เตรียมข้อมูลสำหรับส่งไปหน้าจอง
+    const bookingData = {
+      roomId: parseInt(roomId),
+      room: room,
+      dates: [dayjs(bookingParams.dates[0]), dayjs(bookingParams.dates[1])],
+      guests: bookingParams.guests,
+      priceInfo: availability,
+    };
+
+    console.log("Navigating to booking with data:", bookingData);
+
+    // นำทางไปยังหน้าจอง
+    navigate("/booking", {
+      state: bookingData,
+    });
+  };
+
   const getAmenityIcon = (amenity) => {
     const amenityLower = amenity.toLowerCase();
     if (amenityLower.includes("wifi")) return <WifiOutlined />;
@@ -171,14 +201,14 @@ function RoomDetailPage() {
           image={Empty.PRESENTED_IMAGE_SIMPLE}
           description="ไม่พบข้อมูลห้องพัก"
         >
-          <Link to="/rooms">
-            <Button type="primary">กลับไปดูห้องพักอื่น</Button>
-          </Link>
+          <Button type="primary" onClick={() => navigate("/rooms")}>
+            กลับไปดูห้องพักอื่น
+          </Button>
         </Empty>
       </div>
     );
   }
-  console.log(bookingParams);
+
   return (
     <div className="room-detail-page">
       <div style={{ padding: "20px" }}>
@@ -186,19 +216,34 @@ function RoomDetailPage() {
           {/* Breadcrumb */}
           <Breadcrumb style={{ marginBottom: "24px" }}>
             <Breadcrumb.Item>
-              <Link to="/">หน้าแรก</Link>
+              <Button
+                type="link"
+                onClick={() => navigate("/")}
+                style={{ padding: 0 }}
+              >
+                หน้าแรก
+              </Button>
             </Breadcrumb.Item>
             <Breadcrumb.Item>
-              <Link to="/rooms">ห้องพัก</Link>
+              <Button
+                type="link"
+                onClick={() => navigate("/rooms")}
+                style={{ padding: 0 }}
+              >
+                ห้องพัก
+              </Button>
             </Breadcrumb.Item>
             <Breadcrumb.Item>{room.room_type.name}</Breadcrumb.Item>
           </Breadcrumb>
 
           {/* Back Button */}
           <div style={{ marginBottom: "24px" }}>
-            <Link to="/rooms">
-              <Button icon={<ArrowLeftOutlined />}>กลับไปดูห้องพักอื่น</Button>
-            </Link>
+            <Button
+              icon={<ArrowLeftOutlined />}
+              onClick={() => navigate("/rooms")}
+            >
+              กลับไปดูห้องพักอื่น
+            </Button>
           </div>
 
           <Row gutter={[24, 24]}>
@@ -514,20 +559,14 @@ function RoomDetailPage() {
                             </div>
                           </div>
 
-                          <Link
-                            to="/booking"
-                            state={{
-                              roomId: room.id,
-                              dates: bookingParams.dates,
-
-                              guests: bookingParams.guests,
-                              priceInfo: availability,
-                            }}
+                          <Button
+                            type="primary"
+                            block
+                            size="large"
+                            onClick={handleBooking}
                           >
-                            <Button type="primary" block size="large">
-                              จองเลย
-                            </Button>
-                          </Link>
+                            จองเลย
+                          </Button>
                         </>
                       ) : (
                         <div>
@@ -603,9 +642,13 @@ function RoomDetailPage() {
                         </div>
                       }
                       actions={[
-                        <Link to={`/rooms/${relatedRoom.id}`} key="view">
-                          <Button type="link">ดูรายละเอียด</Button>
-                        </Link>,
+                        <Button
+                          type="link"
+                          key="view"
+                          onClick={() => navigate(`/rooms/${relatedRoom.id}`)}
+                        >
+                          ดูรายละเอียด
+                        </Button>,
                       ]}
                     >
                       <div style={{ marginBottom: "8px" }}>

@@ -1,4 +1,4 @@
-// src/pages/BookingPage.jsx
+// src/pages/BookingPage.jsx - ปรับปรุงแล้ว
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -32,9 +32,7 @@ import {
 import roomService from "../services/roomService";
 import customerService from "../services/customerService";
 import bookingService from "../services/bookingService";
-import { bookingStorageUtils } from "../utils/bookingStorageUtils";
-
-// หมายเหตุ: ไม่ใช้ dayjs เพื่อหลีกเลี่ยงปัญหา clone function
+import dayjs from "dayjs";
 
 const { Title, Text, Paragraph } = Typography;
 const { Step } = Steps;
@@ -51,9 +49,10 @@ function BookingPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // ข้อมูลการจอง
+  // ข้อมูลการจอง - ปรับปรุงการจัดการข้อมูล
   const [bookingData, setBookingData] = useState({
     roomId: null,
+    room: null,
     dates: null,
     guests: 1,
     priceInfo: null,
@@ -66,17 +65,26 @@ function BookingPage() {
 
     // รับข้อมูลจาก state ที่ส่งมาจากหน้าอื่น
     if (location.state) {
-      const { roomId, dates, guests, priceInfo } = location.state;
+      const {
+        roomId,
+        room: roomData,
+        dates,
+        guests,
+        priceInfo,
+      } = location.state;
+
       console.log("BookingPage - received data:", {
         roomId,
+        room: roomData,
         dates,
         guests,
         priceInfo,
       });
-      console.log("BookingPage - dates type:", typeof dates, dates);
 
+      // ตั้งค่าข้อมูลการจอง
       setBookingData({
         roomId,
+        room: roomData,
         dates,
         guests,
         priceInfo,
@@ -84,12 +92,17 @@ function BookingPage() {
         specialRequests: "",
       });
 
-      if (roomId) {
+      // ถ้ามีข้อมูลห้องแล้ว
+      if (roomData) {
+        setRoom(roomData);
+        setLoading(false);
+      } else if (roomId) {
+        // ถ้าไม่มีข้อมูลห้อง ให้ดึงจาก API
         fetchRoomDetails(roomId);
       }
     } else {
       console.log("BookingPage - No state data, redirecting to rooms");
-      // ถ้าไม่มีข้อมูล redirect กลับไปหน้าห้องพัก
+      message.error("ไม่พบข้อมูลการจอง กรุณาเลือกห้องพักใหม่");
       navigate("/rooms");
     }
   }, [location.state, navigate]);
@@ -101,6 +114,12 @@ function BookingPage() {
       const data = await roomService.getRoomById(roomId);
       console.log("BookingPage - room data received:", data);
       setRoom(data);
+
+      // อัปเดตข้อมูลห้องในบุคกิ้งดาต้า
+      setBookingData((prev) => ({
+        ...prev,
+        room: data,
+      }));
     } catch (error) {
       console.error("Error fetching room details:", error);
       message.error("ไม่สามารถโหลดข้อมูลห้องพักได้");
@@ -114,7 +133,7 @@ function BookingPage() {
     try {
       setSubmitting(true);
 
-      // สร้างข้อมูลลูกค้าโดยไม่ต้องเช็คในฐานข้อมูล
+      // สร้างข้อมูลลูกค้า
       const customerInfo = {
         first_name: values.firstName,
         last_name: values.lastName,
@@ -122,11 +141,11 @@ function BookingPage() {
         phone: values.phone,
       };
 
-      setBookingData({
-        ...bookingData,
+      setBookingData((prev) => ({
+        ...prev,
         customerInfo: customerInfo,
         specialRequests: values.specialRequests || "",
-      });
+      }));
 
       setCurrentStep(1);
       message.success("บันทึกข้อมูลลูกค้าสำเร็จ");
@@ -141,6 +160,22 @@ function BookingPage() {
   const handleCreateBooking = async () => {
     try {
       setSubmitting(true);
+
+      // ตรวจสอบข้อมูลที่จำเป็น
+      if (!bookingData.customerInfo) {
+        message.error("กรุณากรอกข้อมูลลูกค้า");
+        return;
+      }
+
+      if (!bookingData.dates || bookingData.dates.length !== 2) {
+        message.error("กรุณาเลือกวันที่เข้าพัก");
+        return;
+      }
+
+      if (!bookingData.priceInfo) {
+        message.error("ไม่พบข้อมูลราคา กรุณาตรวจสอบความพร้อมอีกครั้ง");
+        return;
+      }
 
       // สร้างลูกค้าก่อน
       const customer = await customerService.createCustomer(
@@ -233,8 +268,6 @@ function BookingPage() {
         });
       }
 
-      // ถ้าไม่ใช่รูปแบบที่รู้จัก ลองใช้ dayjs
-
       return "";
     } catch (error) {
       console.error("Error formatting date:", error, date);
@@ -275,10 +308,22 @@ function BookingPage() {
         {/* Breadcrumb */}
         <Breadcrumb style={{ marginBottom: "24px" }}>
           <Breadcrumb.Item>
-            <a href="/">หน้าแรก</a>
+            <Button
+              type="link"
+              onClick={() => navigate("/")}
+              style={{ padding: 0 }}
+            >
+              หน้าแรก
+            </Button>
           </Breadcrumb.Item>
           <Breadcrumb.Item>
-            <a href="/rooms">ห้องพัก</a>
+            <Button
+              type="link"
+              onClick={() => navigate("/rooms")}
+              style={{ padding: 0 }}
+            >
+              ห้องพัก
+            </Button>
           </Breadcrumb.Item>
           <Breadcrumb.Item>จองห้องพัก</Breadcrumb.Item>
         </Breadcrumb>
@@ -296,17 +341,9 @@ function BookingPage() {
             <Text type="secondary">
               กรอกข้อมูลเพื่อทำการจองห้องพัก {room.room_type.name}
             </Text>
-            {bookingStorageUtils.hasBookingInfo() && (
-              <Button
-                size="small"
-                onClick={() => {
-                  bookingStorageUtils.clearBookingInfo();
-                  navigate("/rooms");
-                }}
-              >
-                เริ่มการจองใหม่
-              </Button>
-            )}
+            <Button size="small" onClick={() => navigate("/rooms")}>
+              เริ่มการจองใหม่
+            </Button>
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-// src/services/bookingService.js
+// src/services/bookingService.js - ปรับปรุงแล้ว
 import { supabase } from "../lib/supabase";
 
 class BookingService {
@@ -122,9 +122,28 @@ class BookingService {
     }
   }
 
-  // สร้างการจองใหม่
+  // สร้างการจองใหม่ - ปรับปรุงแล้ว
   async createBooking(bookingData) {
     try {
+      console.log("Creating booking with data:", bookingData);
+
+      // ตรวจสอบข้อมูลที่จำเป็น
+      if (!bookingData.customer_id) {
+        throw new Error("ไม่พบข้อมูลลูกค้า");
+      }
+
+      if (!bookingData.room_id) {
+        throw new Error("ไม่พบข้อมูลห้องพัก");
+      }
+
+      if (!bookingData.check_in_date || !bookingData.check_out_date) {
+        throw new Error("กรุณาระบุวันที่เข้าพักและออก");
+      }
+
+      if (!bookingData.total_price) {
+        throw new Error("ไม่พบข้อมูลราคา");
+      }
+
       // ตรวจสอบว่าห้องว่างหรือไม่
       const isAvailable = await this.checkRoomAvailability(
         bookingData.room_id,
@@ -139,17 +158,21 @@ class BookingService {
       // สร้างเลขที่การจอง
       const bookingNumber = await this.generateBookingNumber();
 
+      // เตรียมข้อมูลการจอง
       const booking = {
         booking_number: bookingNumber,
         customer_id: bookingData.customer_id,
         room_id: bookingData.room_id,
         check_in_date: bookingData.check_in_date,
         check_out_date: bookingData.check_out_date,
-        total_price: bookingData.total_price,
+        total_price: parseFloat(bookingData.total_price),
         special_requests: bookingData.special_requests || "",
         status: "pending",
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
+
+      console.log("Inserting booking:", booking);
 
       const { data, error } = await supabase
         .from("bookings")
@@ -157,8 +180,12 @@ class BookingService {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
 
+      console.log("Booking created successfully:", data);
       return data;
     } catch (error) {
       console.error("Error creating booking:", error);
@@ -171,7 +198,10 @@ class BookingService {
     try {
       const { data, error } = await supabase
         .from("bookings")
-        .update({ status, updated_at: new Date().toISOString() })
+        .update({
+          status,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", bookingId)
         .select()
         .single();
@@ -222,20 +252,54 @@ class BookingService {
     }
   }
 
-  // ตรวจสอบความพร้อมของห้อง
+  // ตรวจสอบความพร้อมของห้อง - ปรับปรุงแล้ว
   async checkRoomAvailability(roomId, checkInDate, checkOutDate) {
     try {
+      console.log("Checking availability for:", {
+        roomId,
+        checkInDate,
+        checkOutDate,
+      });
+
+      // แปลงวันที่ให้เป็นรูปแบบที่ถูกต้อง
+      const formatDate = (date) => {
+        if (!date) return null;
+
+        if (typeof date === "string") {
+          return date;
+        } else if (date && typeof date.format === "function") {
+          return date.format("YYYY-MM-DD");
+        } else if (date instanceof Date) {
+          return date.toISOString().split("T")[0];
+        }
+        return null;
+      };
+
+      const formattedCheckIn = formatDate(checkInDate);
+      const formattedCheckOut = formatDate(checkOutDate);
+
+      if (!formattedCheckIn || !formattedCheckOut) {
+        console.error("Invalid date format");
+        return false;
+      }
+
+      console.log("Formatted dates:", { formattedCheckIn, formattedCheckOut });
+
       const { data, error } = await supabase
         .from("bookings")
-        .select("id")
+        .select("id, check_in_date, check_out_date, status")
         .eq("room_id", roomId)
         .in("status", ["pending", "confirmed"])
         .or(
-          `and(check_in_date.lte.${checkOutDate},check_out_date.gte.${checkInDate})`
+          `and(check_in_date.lte.${formattedCheckOut},check_out_date.gte.${formattedCheckIn})`
         );
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error checking availability:", error);
+        throw error;
+      }
 
+      console.log("Conflicting bookings:", data);
       return data.length === 0;
     } catch (error) {
       console.error("Error checking room availability:", error);
@@ -248,7 +312,10 @@ class BookingService {
     try {
       const { error } = await supabase
         .from("rooms")
-        .update({ status })
+        .update({
+          status,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", roomId);
 
       if (error) throw error;
@@ -259,7 +326,7 @@ class BookingService {
     }
   }
 
-  // สร้างเลขที่การจอง
+  // สร้างเลขที่การจอง - ปรับปรุงแล้ว
   async generateBookingNumber() {
     try {
       // ดึงการจองล่าสุด
@@ -274,19 +341,27 @@ class BookingService {
       const currentYear = new Date().getFullYear();
       let nextNumber = 1;
 
-      if (data && data.length > 0) {
+      if (data && data.length > 0 && data[0].booking_number) {
         const lastBookingNumber = data[0].booking_number;
+        // รูปแบบ: B-YYYY001
         const match = lastBookingNumber.match(/B-(\d{4})(\d{3})/);
 
-        if (match && match[1] === currentYear.toString()) {
+        if (match && parseInt(match[1]) === currentYear) {
           nextNumber = parseInt(match[2]) + 1;
         }
       }
 
-      return `B-${currentYear}${nextNumber.toString().padStart(3, "0")}`;
+      const bookingNumber = `B-${currentYear}${nextNumber
+        .toString()
+        .padStart(3, "0")}`;
+      console.log("Generated booking number:", bookingNumber);
+      return bookingNumber;
     } catch (error) {
       console.error("Error generating booking number:", error);
-      return `B-${new Date().getFullYear()}001`;
+      // ถ้าเกิดข้อผิดพลาด ให้สร้างเลขที่ด้วยการ random
+      const currentYear = new Date().getFullYear();
+      const randomNum = Math.floor(Math.random() * 1000);
+      return `B-${currentYear}${randomNum.toString().padStart(3, "0")}`;
     }
   }
 
@@ -311,7 +386,7 @@ class BookingService {
         cancelled: data.filter((b) => b.status === "cancelled").length,
         totalRevenue: data
           .filter((b) => b.status !== "cancelled")
-          .reduce((sum, booking) => sum + booking.total_price, 0),
+          .reduce((sum, booking) => sum + (booking.total_price || 0), 0),
       };
 
       return stats;
@@ -337,7 +412,7 @@ class BookingService {
     }
   }
 
-  // ดึงรายการห้องที่ว่าง
+  // ดึงรายการห้องที่ว่าง - ปรับปรุงแล้ว
   async getAvailableRooms(checkInDate, checkOutDate) {
     try {
       // ดึงรายการห้องทั้งหมด
@@ -378,9 +453,80 @@ class BookingService {
         }
       }
 
+      console.log(`Found ${availableRooms.length} available rooms`);
       return availableRooms;
     } catch (error) {
       console.error("Error fetching available rooms:", error);
+      throw error;
+    }
+  }
+
+  // ตรวจสอบการจองที่ซ้ำซ้อน
+  async checkConflictingBookings(
+    roomId,
+    checkInDate,
+    checkOutDate,
+    excludeBookingId = null
+  ) {
+    try {
+      let query = supabase
+        .from("bookings")
+        .select("id, check_in_date, check_out_date, status, booking_number")
+        .eq("room_id", roomId)
+        .in("status", ["pending", "confirmed", "completed"])
+        .or(
+          `and(check_in_date.lte.${checkOutDate},check_out_date.gte.${checkInDate})`
+        );
+
+      if (excludeBookingId) {
+        query = query.neq("id", excludeBookingId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      return data || [];
+    } catch (error) {
+      console.error("Error checking conflicting bookings:", error);
+      throw error;
+    }
+  }
+
+  // ค้นหาการจองด้วยหมายเลขการจอง
+  async findBookingByNumber(bookingNumber) {
+    try {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select(
+          `
+          *,
+          customer:customer_id (
+            id,
+            first_name,
+            last_name,
+            email,
+            phone
+          ),
+          room:room_id (
+            id,
+            room_number,
+            room_type:room_type_id (
+              id,
+              name,
+              base_price
+            )
+          )
+        `
+        )
+        .eq("booking_number", bookingNumber)
+        .single();
+
+      if (error) throw error;
+
+      return data;
+    } catch (error) {
+      console.error("Error finding booking by number:", error);
       throw error;
     }
   }

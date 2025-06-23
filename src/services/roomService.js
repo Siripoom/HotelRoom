@@ -1,4 +1,4 @@
-// src/services/roomService.js
+// src/services/roomService.js - ปรับปรุงแล้ว
 import { supabase } from "../lib/supabase";
 
 class RoomService {
@@ -254,29 +254,94 @@ class RoomService {
     }
   }
 
-  // คำนวณราคาห้องพัก
+  // คำนวณราคาห้องพัก - ปรับปรุงแล้ว
   calculateRoomPrice(
     basePrice,
     checkInDate,
     checkOutDate,
     discountPercent = 0
   ) {
-    if (!checkInDate || !checkOutDate) return basePrice;
+    if (!checkInDate || !checkOutDate || !basePrice) {
+      return {
+        basePrice: basePrice || 0,
+        nights: 0,
+        subtotal: 0,
+        discount: 0,
+        total: 0,
+      };
+    }
 
-    const checkIn = new Date(checkInDate);
-    const checkOut = new Date(checkOutDate);
-    const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+    try {
+      let checkIn, checkOut;
 
-    const totalPrice = basePrice * nights;
-    const discount = (totalPrice * discountPercent) / 100;
+      // จัดการกับรูปแบบวันที่ต่างๆ
+      if (typeof checkInDate === "string") {
+        checkIn = new Date(checkInDate);
+      } else if (checkInDate && typeof checkInDate.format === "function") {
+        // dayjs object
+        checkIn = new Date(checkInDate.format("YYYY-MM-DD"));
+      } else {
+        checkIn = new Date(checkInDate);
+      }
 
-    return {
-      basePrice,
-      nights,
-      subtotal: totalPrice,
-      discount,
-      total: totalPrice - discount,
-    };
+      if (typeof checkOutDate === "string") {
+        checkOut = new Date(checkOutDate);
+      } else if (checkOutDate && typeof checkOutDate.format === "function") {
+        // dayjs object
+        checkOut = new Date(checkOutDate.format("YYYY-MM-DD"));
+      } else {
+        checkOut = new Date(checkOutDate);
+      }
+
+      // ตรวจสอบว่าวันที่ถูกต้อง
+      if (isNaN(checkIn.getTime()) || isNaN(checkOut.getTime())) {
+        console.error("Invalid dates provided:", checkInDate, checkOutDate);
+        return {
+          basePrice: basePrice || 0,
+          nights: 0,
+          subtotal: 0,
+          discount: 0,
+          total: 0,
+        };
+      }
+
+      // คำนวณจำนวนคืน
+      const timeDiff = checkOut.getTime() - checkIn.getTime();
+      const nights = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+
+      // ตรวจสอบว่าจำนวนคืนถูกต้อง
+      if (nights <= 0) {
+        console.error("Invalid nights calculation:", nights);
+        return {
+          basePrice: basePrice || 0,
+          nights: 0,
+          subtotal: 0,
+          discount: 0,
+          total: 0,
+        };
+      }
+
+      const subtotal = basePrice * nights;
+      const discount = (subtotal * discountPercent) / 100;
+      const total = subtotal - discount;
+
+      return {
+        basePrice: basePrice,
+        nights: nights,
+        subtotal: subtotal,
+        discount: discount,
+        total: total,
+      };
+    } catch (error) {
+      console.error("Error calculating room price:", error);
+      return {
+        basePrice: basePrice || 0,
+        nights: 0,
+        subtotal: 0,
+        discount: 0,
+        total: 0,
+      };
+    }
   }
 
   // ดึงรีวิวห้องพัก (mock data สำหรับตอนนี้)
@@ -310,6 +375,60 @@ class RoomService {
     } catch (error) {
       console.error("Error fetching room reviews:", error);
       throw error;
+    }
+  }
+
+  // ฟังก์ชันช่วยในการแปลงวันที่
+  formatDateForAPI(date) {
+    if (!date) return null;
+
+    try {
+      if (typeof date === "string") {
+        return date;
+      } else if (date && typeof date.format === "function") {
+        // dayjs object
+        return date.format("YYYY-MM-DD");
+      } else if (date instanceof Date) {
+        return date.toISOString().split("T")[0];
+      }
+      return null;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return null;
+    }
+  }
+
+  // ตรวจสอบความพร้อมของห้องในช่วงวันที่ (ปรับปรุงแล้ว)
+  async checkRoomAvailabilityDetailed(roomId, checkInDate, checkOutDate) {
+    try {
+      const formattedCheckIn = this.formatDateForAPI(checkInDate);
+      const formattedCheckOut = this.formatDateForAPI(checkOutDate);
+
+      if (!formattedCheckIn || !formattedCheckOut) {
+        throw new Error("Invalid date format");
+      }
+
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("id, check_in_date, check_out_date, status")
+        .eq("room_id", roomId)
+        .in("status", ["pending", "confirmed"])
+        .or(
+          `and(check_in_date.lte.${formattedCheckOut},check_out_date.gte.${formattedCheckIn})`
+        );
+
+      if (error) throw error;
+
+      return {
+        available: data.length === 0,
+        conflictingBookings: data,
+      };
+    } catch (error) {
+      console.error("Error checking detailed room availability:", error);
+      return {
+        available: false,
+        conflictingBookings: [],
+      };
     }
   }
 }
