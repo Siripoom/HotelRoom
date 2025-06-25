@@ -113,7 +113,6 @@ class DashboardService {
         .select(
           `
           id,
-          booking_number,
           check_in_date,
           check_out_date,
           status,
@@ -135,7 +134,7 @@ class DashboardService {
 
       return data.map((booking, index) => ({
         key: index,
-        id: booking.booking_number,
+        id: this.generateDisplayBookingNumber(booking.id, booking.created_at),
         customer: booking.customer
           ? `${booking.customer.first_name} ${booking.customer.last_name}`
           : "ไม่ระบุ",
@@ -150,6 +149,24 @@ class DashboardService {
     } catch (error) {
       console.error("Error fetching recent bookings:", error);
       throw error;
+    }
+  }
+
+  // สร้างหมายเลขการจองสำหรับแสดงผล
+  generateDisplayBookingNumber(bookingId, createdAt) {
+    try {
+      const date = new Date(createdAt);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+
+      // ใช้ส่วนสุดท้ายของ UUID เป็นหมายเลขอ้างอิง
+      const idSuffix = bookingId.slice(-6).toUpperCase();
+
+      return `BK${year}${month}${day}-${idSuffix}`;
+    } catch (error) {
+      console.error("Error generating display booking number:", error);
+      return `BK-${bookingId.slice(-8)}`;
     }
   }
 

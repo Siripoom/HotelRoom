@@ -89,7 +89,8 @@ function AdminPayments() {
   const fetchPayments = async () => {
     setLoading(true);
     try {
-      const data = await paymentService.getPayments();
+      const data = await paymentService.getUnpaidBookings();
+      console.log("Fetched payments:", data);
       setPayments(data);
       setFilteredPayments(data);
     } catch (error) {

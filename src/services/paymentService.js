@@ -3,73 +3,81 @@ import { supabase } from "../lib/supabase";
 import { uploadImage, deleteImage } from "../utils/storageUtils";
 
 class PaymentService {
-  // ดึงข้อมูลการชำระเงินทั้งหมด
-  async getPayments(filters = {}) {
+  async getUnpaidBookings() {
     try {
-      let query = supabase
-        .from("payments")
+      // ดึงการจองที่ status = pending ก่อน
+      const { data: pendingBookings, error: bookingsError } = await supabase
+        .from("bookings")
         .select(
           `
-          *,
-          booking:booking_id (
-            id,
-            booking_number,
-            check_in_date,
-            check_out_date,
-            total_price,
-            status as booking_status,
-            customer:customer_id (
-              id,
-              first_name,
-              last_name,
-              email,
-              phone
-            ),
-            room:room_id (
-              id,
-              room_number,
-              room_type:room_type_id (
-                id,
-                name
-              )
-            )
+          id,
+          total_price,
+          check_in_date,
+          check_out_date,
+          created_at,
+          customer:customer_id (
+            first_name,
+            last_name
+          ),
+          room:room_id (
+            room_number,
+            room_type:room_type_id (name)
           )
         `
         )
-        .order("created_at", { ascending: false });
+        .eq("status", "pending");
 
-      // ถ้ามี filter status
-      if (filters.status && filters.status !== "all") {
-        query = query.eq("status", filters.status);
-      }
+      if (bookingsError) throw bookingsError;
 
-      // ถ้ามี filter วันที่
-      if (filters.startDate && filters.endDate) {
-        query = query
-          .gte("payment_date", filters.startDate)
-          .lte("payment_date", filters.endDate);
-      }
+      // ดึงรายการ booking_id ที่มีการชำระเงินยืนยันแล้ว
+      const { data: confirmedPayments, error: paymentsError } = await supabase
+        .from("payments")
+        .select("booking_id")
+        .eq("status", "confirmed");
 
-      // ถ้ามี filter วิธีการชำระเงิน
-      if (filters.paymentMethod && filters.paymentMethod !== "all") {
-        query = query.eq("payment_method", filters.paymentMethod);
-      }
+      if (paymentsError) throw paymentsError;
 
-      const { data, error } = await query;
+      // สร้าง Set ของ booking_id ที่ชำระเงินแล้ว
+      const paidBookingIds = new Set(
+        confirmedPayments.map((payment) => payment.booking_id)
+      );
 
-      if (error) throw error;
+      // กรองเฉพาะการจองที่ยังไม่ชำระเงิน
+      const unpaidBookings = pendingBookings.filter(
+        (booking) => !paidBookingIds.has(booking.id)
+      );
 
-      // เพิ่ม key สำหรับ Table component
-      const paymentsWithKeys =
-        data?.map((payment) => ({
-          ...payment,
-          key: payment.id,
-        })) || [];
+      // เพิ่ม booking_number สำหรับแสดงผล
+      const bookingsWithNumbers = unpaidBookings.map((booking) => ({
+        ...booking,
+        booking_number: this.generateDisplayBookingNumber(
+          booking.id,
+          booking.created_at
+        ),
+      }));
 
-      return paymentsWithKeys;
+      return bookingsWithNumbers;
     } catch (error) {
-      console.error("Error fetching payments:", error);
+      console.error("Error fetching unpaid bookings:", error);
       throw error;
+    }
+  }
+
+  // สร้างหมายเลขการจองสำหรับแสดงผล
+  generateDisplayBookingNumber(bookingId, createdAt) {
+    try {
+      const date = new Date(createdAt);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+
+      // ใช้ส่วนสุดท้ายของ UUID เป็นหมายเลขอ้างอิง
+      const idSuffix = bookingId.slice(-6).toUpperCase();
+
+      return `BK${year}${month}${day}-${idSuffix}`;
+    } catch (error) {
+      console.error("Error generating display booking number:", error);
+      return `BK-${bookingId.slice(-8)}`;
     }
   }
 
@@ -292,42 +300,42 @@ class PaymentService {
   }
 
   // ดึงรายการการจองที่ยังไม่มีการชำระเงิน
-  async getUnpaidBookings() {
-    try {
-      const { data, error } = await supabase
-        .from("bookings")
-        .select(
-          `
-          id,
-          booking_number,
-          total_price,
-          check_in_date,
-          check_out_date,
-          customer:customer_id (
-            first_name,
-            last_name
-          ),
-          room:room_id (
-            room_number,
-            room_type:room_type_id (name)
-          )
-        `
-        )
-        .eq("status", "pending")
-        .not(
-          "id",
-          "in",
-          `(SELECT booking_id FROM payments WHERE status = 'confirmed')`
-        );
+  // async getUnpaidBookings() {
+  //   try {
+  //     const { data, error } = await supabase
+  //       .from("bookings")
+  //       .select(
+  //         `
+  //         id,
+  //         booking_number,
+  //         total_price,
+  //         check_in_date,
+  //         check_out_date,
+  //         customer:customer_id (
+  //           first_name,
+  //           last_name
+  //         ),
+  //         room:room_id (
+  //           room_number,
+  //           room_type:room_type_id (name)
+  //         )
+  //       `
+  //       )
+  //       .eq("status", "pending")
+  //       .not(
+  //         "id",
+  //         "in",
+  //         `(SELECT booking_id FROM payments WHERE status = 'confirmed')`
+  //       );
 
-      if (error) throw error;
+  //     if (error) throw error;
 
-      return data || [];
-    } catch (error) {
-      console.error("Error fetching unpaid bookings:", error);
-      throw error;
-    }
-  }
+  //     return data || [];
+  //   } catch (error) {
+  //     console.error("Error fetching unpaid bookings:", error);
+  //     throw error;
+  //   }
+  // }
 
   // ดึงสถิติการชำระเงิน
   async getPaymentStats(startDate, endDate) {

@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { 
-  Layout, 
-  Menu, 
-  Button, 
-  theme, 
-  Typography, 
-  Dropdown, 
+import {
+  Layout,
+  Menu,
+  Button,
+  theme,
+  Typography,
+  Dropdown,
   Space,
-  Avatar
+  Avatar,
 } from "antd";
 import {
   DashboardOutlined,
@@ -22,7 +22,7 @@ import {
   UnorderedListOutlined,
   LogoutOutlined,
   UserOutlined,
-  DownOutlined
+  DownOutlined,
 } from "@ant-design/icons";
 
 const { Header, Sider, Content } = Layout;
@@ -60,12 +60,6 @@ function AdminLayout() {
       icon: <DollarOutlined />,
       label: "จัดการการชำระเงิน",
     },
-  
-    {
-      key: "/admin/reports",
-      icon: <BarChartOutlined />,
-      label: "รายงานและสถิติ",
-    },
   ];
 
   const getPageTitle = () => {
@@ -76,16 +70,16 @@ function AdminLayout() {
   const userDropdownItems = {
     items: [
       {
-        key: '1',
-        label: 'โปรไฟล์',
-        icon: <UserOutlined />
+        key: "1",
+        label: "โปรไฟล์",
+        icon: <UserOutlined />,
       },
       {
-        key: '2',
-        label: 'ออกจากระบบ',
+        key: "2",
+        label: "ออกจากระบบ",
         icon: <LogoutOutlined />,
-        danger: true
-      }
+        danger: true,
+      },
     ],
   };
 
@@ -94,9 +88,9 @@ function AdminLayout() {
   };
 
   const handleUserMenuClick = ({ key }) => {
-    if (key === '2') {
+    if (key === "2") {
       // ออกจากระบบ - ในที่นี้จะเป็นเพียงการแสดง alert
-      alert('ออกจากระบบแล้ว');
+      alert("ออกจากระบบแล้ว");
     }
   };
 
@@ -122,7 +116,11 @@ function AdminLayout() {
             color: "white",
           }}
         >
-          {!collapsed && <Title level={4} style={{ color: "white", margin: 0 }}>ระบบจัดการโรงแรม</Title>}
+          {!collapsed && (
+            <Title level={4} style={{ color: "white", margin: 0 }}>
+              ระบบจัดการโรงแรม
+            </Title>
+          )}
         </div>
         <Menu
           theme="light"
@@ -140,12 +138,7 @@ function AdminLayout() {
             borderTop: "1px solid #f0f0f0",
           }}
         >
-          <Button
-            type="primary"
-            danger
-            icon={<LogoutOutlined />}
-            block
-          >
+          <Button type="primary" danger icon={<LogoutOutlined />} block>
             {!collapsed && "ออกจากระบบ"}
           </Button>
         </div>
@@ -177,7 +170,11 @@ function AdminLayout() {
             </Title>
           </div>
           <div style={{ marginRight: 16 }}>
-            <Dropdown menu={userDropdownItems} trigger={['click']} onClick={handleUserMenuClick}>
+            <Dropdown
+              menu={userDropdownItems}
+              trigger={["click"]}
+              onClick={handleUserMenuClick}
+            >
               <a onClick={(e) => e.preventDefault()}>
                 <Space>
                   <Avatar size="small" icon={<UserOutlined />} />
