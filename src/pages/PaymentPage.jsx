@@ -173,7 +173,13 @@ function PaymentPage() {
     multiple: false,
     maxCount: 1,
     showUploadList: false,
-    beforeUpload: () => false, // ป้องกันการอัปโหลดอัตโนมัติ
+    accept: "image/*",
+    customRequest: ({ file, onSuccess, onError }) => {
+      // จำลองการอัปโหลดสำเร็จ
+      setTimeout(() => {
+        onSuccess("ok");
+      }, 0);
+    },
     onChange: handleSlipUpload,
   };
 
@@ -192,7 +198,9 @@ function PaymentPage() {
           <Result
             status="success"
             title="ส่งข้อมูลการชำระเงินสำเร็จ!"
-            subTitle={`เลขที่การจอง: ${booking.booking_number} - รอการยืนยันจากทางโรงแรม`}
+            subTitle={`เลขที่การจอง: ${
+              booking.booking_number || `BK-${booking.id.slice(-8)}`
+            } - รอการยืนยันจากทางโรงแรม`}
             extra={[
               <Button
                 type="primary"
@@ -252,7 +260,10 @@ function PaymentPage() {
         {/* Header */}
         <div style={{ marginBottom: "32px" }}>
           <Title level={2}>ชำระเงิน</Title>
-          <Text type="secondary">เลขที่การจอง: {booking?.booking_number}</Text>
+          <Text type="secondary">
+            เลขที่การจอง:{" "}
+            {booking?.booking_number || `BK-${booking?.id.slice(-8)}`}
+          </Text>
         </div>
 
         {/* Steps */}

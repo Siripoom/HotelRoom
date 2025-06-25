@@ -50,6 +50,7 @@ function BookingConfirmationPage() {
     setLoading(true);
     try {
       const data = await bookingService.getBookingById(bookingId);
+      console.log("Booking data:", data);
       setBooking(data);
     } catch (error) {
       console.error("Error fetching booking details:", error);
@@ -241,7 +242,10 @@ function BookingConfirmationPage() {
             {booking.status === "confirmed" ? "การจองสำเร็จ!" : "รอการยืนยัน"}
           </Title>
           <Text style={{ fontSize: "16px", color: "#666" }}>
-            เลขที่การจอง: <Text strong>{booking.booking_number}</Text>
+            เลขที่การจอง:{" "}
+            <Text strong>
+              {booking.booking_number || `BK-${booking.id.slice(-8)}`}
+            </Text>
           </Text>
         </div>
 
@@ -473,7 +477,7 @@ function BookingConfirmationPage() {
               >
                 <div style={{ textAlign: "center" }}>
                   <QRCode
-                    value={`BOOKING:${booking.booking_number}`}
+                    value={`BOOKING:${booking.booking_number || booking.id}`}
                     size={160}
                     style={{ marginBottom: "16px" }}
                   />

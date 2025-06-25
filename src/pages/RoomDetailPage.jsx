@@ -1,6 +1,6 @@
-// src/pages/RoomDetailPage.jsx - ปรับปรุงแล้ว
+// src/pages/RoomDetailPage.jsx - แก้ไขการส่งข้อมูล UUID
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import {
   Row,
   Col,
@@ -47,7 +47,6 @@ const { Option } = Select;
 
 function RoomDetailPage() {
   const { roomId } = useParams();
-  const navigate = useNavigate();
   const [room, setRoom] = useState(null);
   const [relatedRooms, setRelatedRooms] = useState([]);
   const [reviews, setReviews] = useState([]);
@@ -110,8 +109,9 @@ function RoomDetailPage() {
       const checkInDate = bookingParams.dates[0].format("YYYY-MM-DD");
       const checkOutDate = bookingParams.dates[1].format("YYYY-MM-DD");
 
+      // ใช้ room.id แทน roomId เพื่อให้ได้ UUID ที่ถูกต้อง
       const isAvailable = await roomService.checkRoomAvailability(
-        roomId,
+        room.id, // ใช้ UUID ของห้องจากข้อมูลที่ดึงมา
         checkInDate,
         checkOutDate
       );
@@ -134,35 +134,6 @@ function RoomDetailPage() {
     } finally {
       setCheckingAvailability(false);
     }
-  };
-
-  // ฟังก์ชันจองห้องพัก - ปรับปรุงใหม่
-  const handleBooking = () => {
-    if (!bookingParams.dates || bookingParams.dates.length !== 2) {
-      message.error("กรุณาเลือกวันที่เข้าพักก่อน");
-      return;
-    }
-
-    if (!availability || !availability.available) {
-      message.error("กรุณาตรวจสอบความพร้อมของห้องก่อน");
-      return;
-    }
-
-    // เตรียมข้อมูลสำหรับส่งไปหน้าจอง
-    const bookingData = {
-      roomId: parseInt(roomId),
-      room: room,
-      dates: [dayjs(bookingParams.dates[0]), dayjs(bookingParams.dates[1])],
-      guests: bookingParams.guests,
-      priceInfo: availability,
-    };
-
-    console.log("Navigating to booking with data:", bookingData);
-
-    // นำทางไปยังหน้าจอง
-    navigate("/booking", {
-      state: bookingData,
-    });
   };
 
   const getAmenityIcon = (amenity) => {
@@ -201,9 +172,9 @@ function RoomDetailPage() {
           image={Empty.PRESENTED_IMAGE_SIMPLE}
           description="ไม่พบข้อมูลห้องพัก"
         >
-          <Button type="primary" onClick={() => navigate("/rooms")}>
-            กลับไปดูห้องพักอื่น
-          </Button>
+          <Link to="/rooms">
+            <Button type="primary">กลับไปดูห้องพักอื่น</Button>
+          </Link>
         </Empty>
       </div>
     );
@@ -216,34 +187,19 @@ function RoomDetailPage() {
           {/* Breadcrumb */}
           <Breadcrumb style={{ marginBottom: "24px" }}>
             <Breadcrumb.Item>
-              <Button
-                type="link"
-                onClick={() => navigate("/")}
-                style={{ padding: 0 }}
-              >
-                หน้าแรก
-              </Button>
+              <Link to="/">หน้าแรก</Link>
             </Breadcrumb.Item>
             <Breadcrumb.Item>
-              <Button
-                type="link"
-                onClick={() => navigate("/rooms")}
-                style={{ padding: 0 }}
-              >
-                ห้องพัก
-              </Button>
+              <Link to="/rooms">ห้องพัก</Link>
             </Breadcrumb.Item>
             <Breadcrumb.Item>{room.room_type.name}</Breadcrumb.Item>
           </Breadcrumb>
 
           {/* Back Button */}
           <div style={{ marginBottom: "24px" }}>
-            <Button
-              icon={<ArrowLeftOutlined />}
-              onClick={() => navigate("/rooms")}
-            >
-              กลับไปดูห้องพักอื่น
-            </Button>
+            <Link to="/rooms">
+              <Button icon={<ArrowLeftOutlined />}>กลับไปดูห้องพักอื่น</Button>
+            </Link>
           </div>
 
           <Row gutter={[24, 24]}>
@@ -559,14 +515,23 @@ function RoomDetailPage() {
                             </div>
                           </div>
 
-                          <Button
-                            type="primary"
-                            block
-                            size="large"
-                            onClick={handleBooking}
+                          <Link
+                            to="/booking"
+                            state={{
+                              roomId: room.id, // ใช้ UUID ของห้อง
+                              room: room, // ส่งข้อมูลห้องทั้งหมด
+                              checkInDate:
+                                bookingParams.dates[0].format("YYYY-MM-DD"),
+                              checkOutDate:
+                                bookingParams.dates[1].format("YYYY-MM-DD"),
+                              guests: bookingParams.guests,
+                              priceInfo: availability,
+                            }}
                           >
-                            จองเลย
-                          </Button>
+                            <Button type="primary" block size="large">
+                              จองเลย
+                            </Button>
+                          </Link>
                         </>
                       ) : (
                         <div>
@@ -642,13 +607,9 @@ function RoomDetailPage() {
                         </div>
                       }
                       actions={[
-                        <Button
-                          type="link"
-                          key="view"
-                          onClick={() => navigate(`/rooms/${relatedRoom.id}`)}
-                        >
-                          ดูรายละเอียด
-                        </Button>,
+                        <Link to={`/rooms/${relatedRoom.id}`} key="view">
+                          <Button type="link">ดูรายละเอียด</Button>
+                        </Link>,
                       ]}
                     >
                       <div style={{ marginBottom: "8px" }}>

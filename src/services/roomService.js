@@ -1,4 +1,4 @@
-// src/services/roomService.js - ปรับปรุงแล้ว
+// src/services/roomService.js - แก้ไขการตรวจสอบความพร้อม
 import { supabase } from "../lib/supabase";
 
 class RoomService {
@@ -56,10 +56,14 @@ class RoomService {
   // ดึงข้อมูลห้องพักตาม ID
   async getRoomById(roomId) {
     try {
-      const { data, error } = await supabase
-        .from("rooms")
-        .select(
-          `
+      // ตรวจสอบว่า roomId เป็น UUID หรือไม่
+      const isUUID =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          roomId
+        );
+
+      let query = supabase.from("rooms").select(
+        `
           *,
           room_type:room_type_id (
             id,
@@ -70,9 +74,16 @@ class RoomService {
             description
           )
         `
-        )
-        .eq("id", roomId)
-        .single();
+      );
+
+      // ถ้าเป็น UUID ให้ใช้ id, ถ้าไม่ใช่ให้ใช้ room_number
+      if (isUUID) {
+        query = query.eq("id", roomId);
+      } else {
+        query = query.eq("room_number", roomId);
+      }
+
+      const { data, error } = await query.single();
 
       if (error) throw error;
 
@@ -131,19 +142,60 @@ class RoomService {
     }
   }
 
-  // ตรวจสอบความพร้อมของห้อง
+  // ตรวจสอบความพร้อมของห้อง - แก้ไขแล้ว
   async checkRoomAvailability(roomId, checkInDate, checkOutDate) {
     try {
+      console.log(
+        "Checking availability for room:",
+        roomId,
+        "dates:",
+        checkInDate,
+        "to",
+        checkOutDate
+      );
+
+      // ตรวจสอบว่า roomId เป็น UUID หรือไม่
+      const isUUID =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          roomId
+        );
+
+      let actualRoomId = roomId;
+
+      // ถ้าไม่ใช่ UUID ให้หา ID จาก room_number
+      if (!isUUID) {
+        const { data: roomData, error: roomError } = await supabase
+          .from("rooms")
+          .select("id")
+          .eq("room_number", roomId)
+          .single();
+
+        if (roomError) {
+          console.error("Error finding room by number:", roomError);
+          throw roomError;
+        }
+
+        actualRoomId = roomData.id;
+      }
+
+      console.log("Using actual room ID:", actualRoomId);
+
+      // ตรวจสอบการจองที่ทับซ้อน
       const { data, error } = await supabase
         .from("bookings")
-        .select("id")
-        .eq("room_id", roomId)
+        .select("id, check_in_date, check_out_date, status")
+        .eq("room_id", actualRoomId)
         .in("status", ["pending", "confirmed"])
         .or(
           `and(check_in_date.lte.${checkOutDate},check_out_date.gte.${checkInDate})`
         );
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error checking bookings:", error);
+        throw error;
+      }
+
+      console.log("Conflicting bookings found:", data);
 
       return data.length === 0;
     } catch (error) {
@@ -199,7 +251,7 @@ class RoomService {
 
       for (const room of allRooms) {
         const isAvailable = await this.checkRoomAvailability(
-          room.id,
+          room.id, // ใช้ UUID ของห้อง
           checkInDate,
           checkOutDate
         );
@@ -241,7 +293,7 @@ class RoomService {
         `
         )
         .eq("room_type_id", currentRoom.room_type_id)
-        .neq("id", roomId)
+        .neq("id", currentRoom.id)
         .eq("status", "available")
         .limit(limit);
 
@@ -254,94 +306,36 @@ class RoomService {
     }
   }
 
-  // คำนวณราคาห้องพัก - ปรับปรุงแล้ว
+  // คำนวณราคาห้องพัก
   calculateRoomPrice(
     basePrice,
     checkInDate,
     checkOutDate,
     discountPercent = 0
   ) {
-    if (!checkInDate || !checkOutDate || !basePrice) {
+    if (!checkInDate || !checkOutDate)
       return {
-        basePrice: basePrice || 0,
-        nights: 0,
-        subtotal: 0,
+        basePrice,
+        nights: 1,
+        subtotal: basePrice,
         discount: 0,
-        total: 0,
+        total: basePrice,
       };
-    }
 
-    try {
-      let checkIn, checkOut;
+    const checkIn = new Date(checkInDate);
+    const checkOut = new Date(checkOutDate);
+    const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
 
-      // จัดการกับรูปแบบวันที่ต่างๆ
-      if (typeof checkInDate === "string") {
-        checkIn = new Date(checkInDate);
-      } else if (checkInDate && typeof checkInDate.format === "function") {
-        // dayjs object
-        checkIn = new Date(checkInDate.format("YYYY-MM-DD"));
-      } else {
-        checkIn = new Date(checkInDate);
-      }
+    const totalPrice = basePrice * nights;
+    const discount = (totalPrice * discountPercent) / 100;
 
-      if (typeof checkOutDate === "string") {
-        checkOut = new Date(checkOutDate);
-      } else if (checkOutDate && typeof checkOutDate.format === "function") {
-        // dayjs object
-        checkOut = new Date(checkOutDate.format("YYYY-MM-DD"));
-      } else {
-        checkOut = new Date(checkOutDate);
-      }
-
-      // ตรวจสอบว่าวันที่ถูกต้อง
-      if (isNaN(checkIn.getTime()) || isNaN(checkOut.getTime())) {
-        console.error("Invalid dates provided:", checkInDate, checkOutDate);
-        return {
-          basePrice: basePrice || 0,
-          nights: 0,
-          subtotal: 0,
-          discount: 0,
-          total: 0,
-        };
-      }
-
-      // คำนวณจำนวนคืน
-      const timeDiff = checkOut.getTime() - checkIn.getTime();
-      const nights = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
-
-      // ตรวจสอบว่าจำนวนคืนถูกต้อง
-      if (nights <= 0) {
-        console.error("Invalid nights calculation:", nights);
-        return {
-          basePrice: basePrice || 0,
-          nights: 0,
-          subtotal: 0,
-          discount: 0,
-          total: 0,
-        };
-      }
-
-      const subtotal = basePrice * nights;
-      const discount = (subtotal * discountPercent) / 100;
-      const total = subtotal - discount;
-
-      return {
-        basePrice: basePrice,
-        nights: nights,
-        subtotal: subtotal,
-        discount: discount,
-        total: total,
-      };
-    } catch (error) {
-      console.error("Error calculating room price:", error);
-      return {
-        basePrice: basePrice || 0,
-        nights: 0,
-        subtotal: 0,
-        discount: 0,
-        total: 0,
-      };
-    }
+    return {
+      basePrice,
+      nights,
+      subtotal: totalPrice,
+      discount,
+      total: totalPrice - discount,
+    };
   }
 
   // ดึงรีวิวห้องพัก (mock data สำหรับตอนนี้)
@@ -375,60 +369,6 @@ class RoomService {
     } catch (error) {
       console.error("Error fetching room reviews:", error);
       throw error;
-    }
-  }
-
-  // ฟังก์ชันช่วยในการแปลงวันที่
-  formatDateForAPI(date) {
-    if (!date) return null;
-
-    try {
-      if (typeof date === "string") {
-        return date;
-      } else if (date && typeof date.format === "function") {
-        // dayjs object
-        return date.format("YYYY-MM-DD");
-      } else if (date instanceof Date) {
-        return date.toISOString().split("T")[0];
-      }
-      return null;
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return null;
-    }
-  }
-
-  // ตรวจสอบความพร้อมของห้องในช่วงวันที่ (ปรับปรุงแล้ว)
-  async checkRoomAvailabilityDetailed(roomId, checkInDate, checkOutDate) {
-    try {
-      const formattedCheckIn = this.formatDateForAPI(checkInDate);
-      const formattedCheckOut = this.formatDateForAPI(checkOutDate);
-
-      if (!formattedCheckIn || !formattedCheckOut) {
-        throw new Error("Invalid date format");
-      }
-
-      const { data, error } = await supabase
-        .from("bookings")
-        .select("id, check_in_date, check_out_date, status")
-        .eq("room_id", roomId)
-        .in("status", ["pending", "confirmed"])
-        .or(
-          `and(check_in_date.lte.${formattedCheckOut},check_out_date.gte.${formattedCheckIn})`
-        );
-
-      if (error) throw error;
-
-      return {
-        available: data.length === 0,
-        conflictingBookings: data,
-      };
-    } catch (error) {
-      console.error("Error checking detailed room availability:", error);
-      return {
-        available: false,
-        conflictingBookings: [],
-      };
     }
   }
 }
