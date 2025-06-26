@@ -1,4 +1,4 @@
-// src/pages/HomePage.jsx
+// src/pages/HomePage.jsx - อัปเดตให้ใช้รูปจาก assets
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -43,6 +43,17 @@ const { Title, Text, Paragraph } = Typography;
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 
+// นำเข้ารูปภาพจาก assets
+import hotelImage1 from "../assets/S__25985045_0.jpg";
+import hotelImage2 from "../assets/S__25985047_0.jpg";
+import hotelImage3 from "../assets/S__25985048_0.jpg";
+import hotelImage4 from "../assets/S__25985049_0.jpg";
+import hotelImage5 from "../assets/S__25985050_0.jpg";
+import hotelImage6 from "../assets/S__25985051_0.jpg";
+import hotelImage7 from "../assets/S__25985052_0.jpg";
+import hotelImage8 from "../assets/S__25985053_0.jpg";
+import hotelImage9 from "../assets/S__25985054_0.jpg";
+
 // Mock Data - ในโปรเจคจริงจะดึงจาก Supabase
 const TESTIMONIALS = [
   {
@@ -71,6 +82,66 @@ const TESTIMONIALS = [
     comment:
       "ประทับใจกับการบริการมาก พนักงานเป็นกันเอง ให้คำแนะนำดี ห้องพักกว้างขวาง สะอาด จะกลับมาพักอีกแน่นอนครับ",
     date: "25 เมษายน 2025",
+  },
+];
+
+// ข้อมูลรูปภาพสำหรับ Carousel
+const CAROUSEL_IMAGES = [
+  {
+    src: hotelImage1,
+    title: "ห้องพักสุดหรู",
+    subtitle: "ผ่อนคลายในห้องพักที่ออกแบบอย่างพิถีพิถัน พร้อมวิวที่สวยงาม",
+    action: "ดูห้องพัก",
+    target: "#rooms-section",
+  },
+  {
+    src: hotelImage2,
+    title: "บริการเหนือระดับ",
+    subtitle:
+      "เราใส่ใจในทุกรายละเอียด เพื่อให้คุณได้รับประสบการณ์ที่น่าประทับใจ",
+    action: "ดูบริการของเรา",
+    target: "#features-section",
+  },
+  {
+    src: hotelImage3,
+    title: "บรรยากาศที่เป็นส่วนตัว",
+    subtitle: "สัมผัสความสงบและความผ่อนคลายในสภาพแวดล้อมที่เป็นส่วนตัว",
+    action: "จองเลย",
+    target: "/rooms",
+  },
+];
+
+// ข้อมูลรูปภาพสำหรับแกลเลอรี่
+const GALLERY_IMAGES = [
+  {
+    src: hotelImage4,
+    title: "ห้องพักที่หรูหรา",
+    description: "ห้องพักที่ออกแบบมาอย่างพิถีพิถัน",
+  },
+  {
+    src: hotelImage5,
+    title: "พื้นที่พักผ่อน",
+    description: "บรรยากาศที่เหมาะสำหรับการพักผ่อน",
+  },
+  {
+    src: hotelImage6,
+    title: "สิ่งอำนวยความสะดวก",
+    description: "สิ่งอำนวยความสะดวกครบครันในทุกห้อง",
+  },
+  {
+    src: hotelImage7,
+    title: "การตกแต่งสมัยใหม่",
+    description: "การตกแต่งที่ผสมผสานระหว่างความสะดวกสบายและความหรูหรา",
+  },
+  {
+    src: hotelImage8,
+    title: "พื้นที่ส่วนกลาง",
+    description: "พื้นที่ส่วนกลางที่สวยงามและสะดวกสบาย",
+  },
+  {
+    src: hotelImage9,
+    title: "ห้องน้ำหรูหรา",
+    description: "ห้องน้ำที่ออกแบบมาอย่างหรูหราและใช้งานสะดวก",
   },
 ];
 
@@ -157,68 +228,43 @@ function HomePage() {
 
   return (
     <div className="homepage">
-      {/* Hero Section */}
+      {/* Hero Section with Asset Images */}
       <section className="relative">
         <Carousel autoplay effect="fade" className="h-[600px] overflow-hidden">
-          <div className="h-[600px] relative">
-            <div
-              className="w-full h-full bg-cover bg-center"
-              style={{
-                backgroundImage:
-                  "url('https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=1920&auto=format')",
-              }}
-            />
-            <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center text-white p-8">
-              <h1 className="text-4xl md:text-5xl font-bold mb-4 text-center">
-                ห้องพักสุดหรู
-              </h1>
-              <p className="text-xl md:text-2xl mb-8 text-center max-w-3xl">
-                ผ่อนคลายในห้องพักที่ออกแบบอย่างพิถีพิถัน พร้อมวิวที่สวยงาม
-              </p>
-              <Button
-                type="primary"
-                size="large"
-                className="text-lg h-12 px-8"
-                onClick={() =>
-                  document
-                    .getElementById("rooms-section")
-                    .scrollIntoView({ behavior: "smooth" })
-                }
-              >
-                ดูห้องพัก
-              </Button>
+          {CAROUSEL_IMAGES.map((slide, index) => (
+            <div key={index} className="h-[600px] relative">
+              <div
+                className="w-full h-full bg-cover bg-center"
+                style={{
+                  backgroundImage: `url('${slide.src}')`,
+                }}
+              />
+              <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center text-white p-8">
+                <h1 className="text-4xl md:text-5xl font-bold mb-4 text-center">
+                  {slide.title}
+                </h1>
+                <p className="text-xl md:text-2xl mb-8 text-center max-w-3xl">
+                  {slide.subtitle}
+                </p>
+                <Button
+                  type="primary"
+                  size="large"
+                  className="text-lg h-12 px-8"
+                  onClick={() => {
+                    if (slide.target.startsWith("#")) {
+                      document
+                        .getElementById(slide.target.substring(1))
+                        ?.scrollIntoView({ behavior: "smooth" });
+                    } else {
+                      window.location.href = slide.target;
+                    }
+                  }}
+                >
+                  {slide.action}
+                </Button>
+              </div>
             </div>
-          </div>
-          <div className="h-[600px] relative">
-            <div
-              className="w-full h-full bg-cover bg-center"
-              style={{
-                backgroundImage:
-                  "url('https://images.unsplash.com/photo-1540541338287-41700207dee6?q=80&w=1920&auto=format')",
-              }}
-            />
-            <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center text-white p-8">
-              <h1 className="text-4xl md:text-5xl font-bold mb-4 text-center">
-                บริการเหนือระดับ
-              </h1>
-              <p className="text-xl md:text-2xl mb-8 text-center max-w-3xl">
-                เราใส่ใจในทุกรายละเอียด
-                เพื่อให้คุณได้รับประสบการณ์ที่น่าประทับใจ
-              </p>
-              <Button
-                type="primary"
-                size="large"
-                className="text-lg h-12 px-8"
-                onClick={() =>
-                  document
-                    .getElementById("features-section")
-                    .scrollIntoView({ behavior: "smooth" })
-                }
-              >
-                ดูบริการของเรา
-              </Button>
-            </div>
-          </div>
+          ))}
         </Carousel>
 
         {/* Search/Booking Box */}
@@ -433,8 +479,57 @@ function HomePage() {
         </div>
       </section>
 
+      {/* Gallery Section - ใหม่ */}
+      <section className="py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <Title level={2} className="mb-4 text-3xl font-bold">
+              <span className="border-b-2 border-primary pb-2">
+                บรรยากาศโรงแรม
+              </span>
+            </Title>
+            <Paragraph className="text-lg max-w-2xl mx-auto">
+              สัมผัสบรรยากาศและความงามของโรงแรมผ่านภาพถ่ายที่แสดงถึงคุณภาพการบริการของเรา
+            </Paragraph>
+          </div>
+
+          <Row gutter={[16, 16]}>
+            {GALLERY_IMAGES.map((image, index) => (
+              <Col xs={24} sm={12} md={8} key={index}>
+                <Card
+                  hoverable
+                  className="overflow-hidden"
+                  cover={
+                    <div className="h-64 overflow-hidden">
+                      <Image
+                        src={image.src}
+                        alt={image.title}
+                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                        style={{ objectFit: "cover" }}
+                        preview={{
+                          mask: "ดูรูปภาพ",
+                        }}
+                      />
+                    </div>
+                  }
+                >
+                  <div className="p-2">
+                    <Title level={5} className="mb-2">
+                      {image.title}
+                    </Title>
+                    <Text type="secondary" className="text-sm">
+                      {image.description}
+                    </Text>
+                  </div>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </div>
+      </section>
+
       {/* Features Section */}
-      <section id="features-section" className="py-20 px-4">
+      <section id="features-section" className="py-20 px-4 bg-gray-50">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <Title level={2} className="mb-4 text-3xl font-bold">
@@ -496,7 +591,7 @@ function HomePage() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-20 px-4 bg-gray-50">
+      <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <Title level={2} className="mb-4 text-3xl font-bold">
@@ -540,7 +635,7 @@ function HomePage() {
       </section>
 
       {/* Contact Section */}
-      <section className="py-20 px-4">
+      <section className="py-20 px-4 bg-gray-50">
         <div className="max-w-6xl mx-auto">
           <Row gutter={[48, 48]} align="middle">
             <Col xs={24} lg={12}>
@@ -566,7 +661,7 @@ function HomePage() {
                     <PhoneOutlined className="text-primary text-xl" />
                     <div>
                       <Text strong>โทรศัพท์</Text>
-                      <div>+66 2 123 4567</div>
+                      <div>+66 819797986</div>
                     </div>
                   </Space>
                 </div>
@@ -575,7 +670,7 @@ function HomePage() {
                     <MailOutlined className="text-primary text-xl" />
                     <div>
                       <Text strong>อีเมล</Text>
-                      <div>info@luxuryhotel.com</div>
+                      <div>info@krplace.com</div>
                     </div>
                   </Space>
                 </div>
@@ -630,7 +725,7 @@ function HomePage() {
             <Col xs={24} lg={12}>
               <div className="text-center">
                 <img
-                  src="https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=600&auto=format"
+                  src={hotelImage4}
                   alt="Hotel Exterior"
                   className="w-full h-80 object-cover rounded-lg shadow-lg"
                 />
@@ -639,7 +734,72 @@ function HomePage() {
           </Row>
         </div>
       </section>
+
+      {/* Call to Action Section */}
+      <section className="py-20 px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          <div
+            style={{
+              backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('${hotelImage5}')`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              borderRadius: "16px",
+              padding: "60px 20px",
+              color: "white",
+            }}
+          >
+            <Title level={2} style={{ color: "white", marginBottom: "16px" }}>
+              พร้อมสำหรับการพักผ่อนที่ดีที่สุดแล้วหรือยัง?
+            </Title>
+            <Paragraph
+              style={{
+                fontSize: "18px",
+                color: "white",
+                marginBottom: "32px",
+                maxWidth: "600px",
+                margin: "0 auto 32px",
+              }}
+            >
+              จองห้องพักกับเราวันนี้และสัมผัสประสบการณ์การพักผ่อนที่ไม่เหมือนใคร
+              พร้อมบริการที่เหนือความคาดหมาย
+            </Paragraph>
+            <Space size="large">
+              <Link to="/rooms">
+                <Button
+                  type="primary"
+                  size="large"
+                  style={{
+                    backgroundColor: "#AA8453",
+                    borderColor: "#AA8453",
+                    height: "50px",
+                    padding: "0 40px",
+                    fontSize: "16px",
+                  }}
+                >
+                  เริ่มจองเลย
+                </Button>
+              </Link>
+              <Link to="/contact">
+                <Button
+                  size="large"
+                  style={{
+                    backgroundColor: "transparent",
+                    borderColor: "white",
+                    color: "white",
+                    height: "50px",
+                    padding: "0 40px",
+                    fontSize: "16px",
+                  }}
+                >
+                  ติดต่อเรา
+                </Button>
+              </Link>
+            </Space>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
+
 export default HomePage;
