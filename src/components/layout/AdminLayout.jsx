@@ -55,11 +55,11 @@ function AdminLayout() {
       icon: <CalendarOutlined />,
       label: "จัดการการจอง",
     },
-    {
-      key: "/admin/payments",
-      icon: <DollarOutlined />,
-      label: "จัดการการชำระเงิน",
-    },
+    // {
+    //   key: "/admin/payments",
+    //   icon: <DollarOutlined />,
+    //   label: "จัดการการชำระเงิน",
+    // },
   ];
 
   const getPageTitle = () => {
